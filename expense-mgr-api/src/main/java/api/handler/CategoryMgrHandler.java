@@ -10,6 +10,9 @@ public class CategoryMgrHandler extends BaseMgrHandler {
     @Override
     protected void process(HttpExchange exchange) throws Exception {
         String path = exchange.getRequestURI().getPath();
+        if (path.endsWith("/") && path.length() > 1) {
+            path = path.substring(0, path.length() - 1);
+        }
 
         if (path.endsWith("/large")) {
             sendJsonResponse(exchange, 200, categoryMgr.listLargeCategory());

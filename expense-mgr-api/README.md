@@ -63,8 +63,34 @@ java -jar C:\Java\expense-mgr-api\target\expense-mgr-api-1.0.0.jar
 
 ---
 
-## 🗄 DB 초기화 및 예시 데이터 넣기
+## 🖥️ 🖥️ Java Swing REST API 통합 검증 테스터 (`gui.ApiTestGui`)
 
+전체 REST API 기능(회원, 지출, 카테고리, 예산, 포인트/상점, 커뮤니티, 친구/챌린지, 환경설정)을 GUI GUI 화면에서 한눈에 시험해 볼 수 있는 Swing 테스터가 제공됩니다.
+
+### 실행 방법:
+1. **배치 파일 실행 (`run-gui.bat`)**:
+   - `run-gui.bat` 더블 클릭하여 실행
+2. **PowerShell 스크립트 실행 (`run-gui.ps1`)**:
+   ```powershell
+   .\run-gui.ps1
+   ```
+3. **Maven 명령어로 실행**:
+   ```powershell
+   mvn exec:java -Dexec.mainClass="gui.ApiTestGui"
+   ```
+4. **IDE / Java 직접 실행**:
+   - `src/main/java/gui/ApiTestGui.java` 클래스의 `main` 메소드 실행
+
+### 주요 기능:
+* **내장 서버 제어**: GUI 상단에서 `[🚀 내장 서버 시작]`, `[🛑 내장 서버 중지]`, `[🔍 연결 확인]` 제공
+* **탭별 API 시험**: 8개 카테고리별 분리 탭 (회원, 지출, 카테고리, 예산, 포인트/상점, 커뮤니티, 친구/챌린지, 환경설정)
+* **샘플 데이터 자동채우기 (`⚡`)**: 1클릭으로 가상의 테스트 데이터 입력 가능
+* **실시간 Pretty JSON & 실행 로그**: 응답 상태 코드, 소요 시간(ms), 가독성 높은 JSON 및 전송 로그 확인 가능
+
+---
+
+## 🗄 DB 초기화 및 예시 데이터 넣기
+(현재 공유 DB에 생성된 상태)
 MySQL Command Line 또는 커맨드 창에서 아래 명령어를 실행하면 `richman` 데이터베이스와 14개 테이블 및 예시 데이터가 생성됩니다:
 
 ```powershell
