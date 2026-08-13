@@ -1,0 +1,357 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>계층형 지출 관리 시스템 - myJava Mgr REST API 명세서</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{--primary:#1a3a5c;--accent:#e8a020;--accent-light:#f5c842;--bg:#f8f9fb;--card:#ffffff;--text:#1c2333;--text2:#4a5568;--border:#e2e8f0;--codebg:#f1f4f8;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.65;}
+.cover{background:linear-gradient(145deg,#0f1f35 0%,#1a3a5c 50%,#0e2644 100%);color:white;padding:80px 60px 60px;min-height:100vh;display:flex;flex-direction:column;justify-content:center;page-break-after:always;}
+.badge{display:inline-block;background:var(--accent);color:#1a1a1a;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 16px;border-radius:20px;margin-bottom:36px;}
+.cover h1{font-size:44px;font-weight:700;line-height:1.2;margin-bottom:12px;}
+.cover h1 span{color:var(--accent-light);}
+.cover-sub{font-size:17px;font-weight:300;color:rgba(255,255,255,.75);margin-bottom:50px;}
+.cover-stats{display:flex;gap:36px;margin-bottom:50px;}
+.cover-stats .num{font-size:34px;font-weight:700;color:var(--accent-light);display:block;line-height:1;}
+.cover-stats .lbl{font-size:12px;color:rgba(255,255,255,.6);margin-top:4px;}
+.divider{width:60px;height:3px;background:var(--accent);margin:36px 0;}
+.cover-meta{color:rgba(255,255,255,.5);font-size:12px;}
+.cover-meta strong{color:rgba(255,255,255,.8);}
+.toc{background:white;padding:50px 60px;page-break-after:always;}
+.toc h2{font-size:26px;font-weight:700;color:var(--primary);margin-bottom:30px;padding-bottom:14px;border-bottom:3px solid var(--accent);}
+.toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 40px;}
+.toc-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0;border-bottom:1px dashed #ddd;}
+.toc-num{font-size:11px;font-weight:700;color:var(--accent);width:22px;flex-shrink:0;padding-top:2px;}
+.toc-text{font-size:13px;font-weight:600;}
+.toc-sub{font-size:11px;color:var(--text2);}
+.page{max-width:980px;margin:0 auto;padding:30px 40px;}
+.sec-hdr{padding-top:30px;margin-bottom:20px;}
+.sec-num{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+h2.sec-title{font-size:26px;font-weight:700;color:var(--primary);margin-bottom:6px;}
+.sec-desc{font-size:13.5px;color:var(--text2);padding-bottom:18px;border-bottom:2px solid var(--border);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin:20px 0;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.card-hdr{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);background:#fafbfc;}
+.ico{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;font-family:'JetBrains Mono',monospace;flex-shrink:0;}
+.card-title{font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--primary);}
+.card-sub{font-size:12px;color:var(--text2);margin-top:2px;}
+.card-body{padding:18px 20px;}
+.ftable{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+.ftable th{background:#f0f4f8;color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;padding:8px 12px;text-align:left;border-bottom:2px solid var(--border);}
+.ftable td{padding:8px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+.ftable tr:last-child td{border-bottom:none;}
+code{font-family:'JetBrains Mono',monospace;font-size:11.5px;background:var(--codebg);padding:2px 6px;border-radius:4px;color:#c7254e;}
+.mtitle{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.mrow{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #f0f0f0;align-items:flex-start;}
+.mrow:last-child{border-bottom:none;}
+.mbadge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;flex-shrink:0;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.sel{background:#dbeafe;color:#1e40af;} .ins{background:#dcfce7;color:#166534;}
+.upd{background:#fef9c3;color:#854d0e;} .del{background:#fee2e2;color:#991b1b;}
+.chk{background:#ede9fe;color:#5b21b6;} .lgc{background:#fce7f3;color:#9d174d;}
+.mcnt{flex:1;}
+.msig{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--primary);margin-bottom:3px;}
+.mdesc{font-size:12px;color:var(--text2);line-height:1.5;}
+.tag{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-right:4px;margin-bottom:4px;}
+.td{background:#dbeafe;color:#1e40af;} .ta{background:#fde8d8;color:#9a3412;}
+.ts{background:#fde8d8;color:#9a3412;} .tu{background:#f3e8ff;color:#7c3aed;}
+.warn{background:#fff8e1;border:1px solid #f0c040;border-radius:8px;padding:10px 14px;margin:12px 0;font-size:12px;color:#7a5c00;}
+.warn::before{content:'⚠ ';}
+.rtable{width:100%;border-collapse:collapse;font-size:12px;margin-top:14px;}
+.rtable th{background:var(--primary);color:white;padding:9px 12px;text-align:left;font-size:11px;}
+.rtable td{padding:8px 12px;border-bottom:1px solid var(--border);}
+.rtable tr:nth-child(even) td{background:#fafbfc;}
+.mod-hdr td{background:#1a3a5c!important;color:white!important;font-weight:700;font-size:12px;padding:10px 14px;}
+.cblock{background:#1e2a38;border-radius:8px;padding:14px 18px;margin:10px 0;overflow:hidden;}
+.cblock .ct{font-size:11px;color:#8899aa;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.cblock pre{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#cdd9e5;line-height:1.65;white-space:pre-wrap;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin:20px 0;}
+.scard{background:white;border:1px solid var(--border);border-radius:8px;padding:16px;border-top:4px solid var(--accent);}
+.scard h4{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:8px;}
+.scard ul{list-style:none;font-size:12px;color:var(--text2);}
+.scard li{padding:2px 0;}
+.scard li::before{content:'• ';color:var(--accent);}
+hr.sep{border:none;border-top:2px solid var(--border);margin:36px 0;}
+.footer{margin-top:50px;padding:24px 40px;background:var(--primary);color:rgba(255,255,255,.65);font-size:11px;display:flex;justify-content:space-between;}
+.footer strong{color:white;}
+@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}}
+</style>
+</head>
+<body>
+
+<!-- 표지 -->
+<div class="cover">
+  <div class="badge">myJava Mgr &amp; Connection Pool REST API Documentation</div>
+  <h1>계층형 지출 관리 시스템<br><span>myJava Mgr REST API 종합 명세서</span></h1>
+  <p class="cover-sub">myJava(DBConnectionMgr + XxxMgr + XxxBean) 백엔드 RESTful 웹 서비스 명세서</p>
+  <div class="cover-stats">
+    <div><span class="num">36</span><span class="lbl">Java 클래스</span></div>
+    <div><span class="num">10</span><span class="lbl">XxxMgr 클래스</span></div>
+    <div><span class="num">13</span><span class="lbl">XxxBean 클래스</span></div>
+    <div><span class="num">44</span><span class="lbl">API 엔드포인트</span></div>
+  </div>
+  <div class="divider"></div>
+  <div class="cover-meta"><strong>위치:</strong> C:\Java\expense-mgr-api &nbsp;|&nbsp; <strong>패턴:</strong> DBConnectionMgr (Pool) + Mgr + Bean &nbsp;|&nbsp; <strong>Base URL:</strong> http://localhost:8080</div>
+</div>
+
+<!-- 목차 -->
+<div class="toc">
+  <h2>목 차</h2>
+  <div class="toc-grid">
+    <div>
+      <div class="toc-item"><span class="toc-num">0</span><div><div class="toc-text">프로젝트 개요 &amp; ERD</div><div class="toc-sub">myJava Mgr 아키텍처 · DBConnectionMgr 분석 · 전체 ERD</div></div></div>
+      <div class="toc-item"><span class="toc-num">1</span><div><div class="toc-text">회원 관리 (User)</div><div class="toc-sub">UserBean · UserMgr · UserMgrHandler</div></div></div>
+      <div class="toc-item"><span class="toc-num">2</span><div><div class="toc-text">지출 관리 (Expense)</div><div class="toc-sub">ExpenseBean · ExpenseMgr · ExpenseMgrHandler</div></div></div>
+      <div class="toc-item"><span class="toc-num">3</span><div><div class="toc-text">카테고리 (Category)</div><div class="toc-sub">LargeCategoryBean · MediumCategoryBean · CategoryMgr</div></div></div>
+      <div class="toc-item"><span class="toc-num">4</span><div><div class="toc-text">예산 관리 (Budget)</div><div class="toc-sub">BudgetBean · BudgetMgr · BudgetMgrHandler</div></div></div>
+      <div class="toc-item"><span class="toc-num">5</span><div><div class="toc-text">포인트 시스템 (Point)</div><div class="toc-sub">PointHistoryBean · PointMgr · PointMgrHandler</div></div></div>
+    </div>
+    <div>
+      <div class="toc-item"><span class="toc-num">6</span><div><div class="toc-text">커뮤니티 (Community)</div><div class="toc-sub">PostBean · PostMgr · PostMgrHandler</div></div></div>
+      <div class="toc-item"><span class="toc-num">7</span><div><div class="toc-text">친구 관리 (Friend)</div><div class="toc-sub">FriendBean · FriendMgr · FriendMgrHandler</div></div></div>
+      <div class="toc-item"><span class="toc-num">8</span><div><div class="toc-text">팀 챌린지 (Challenge)</div><div class="toc-sub">TeamRoomBean · TeamMemberBean · ChallengeMgr</div></div></div>
+      <div class="toc-item"><span class="toc-num">9</span><div><div class="toc-text">상점 &amp; 앱 설정 모듈</div><div class="toc-sub">ItemBean · PurchaseBean · StoreMgr · SettingMgr</div></div></div>
+      <div class="toc-item"><span class="toc-num">10</span><div><div class="toc-text">myJava Mgr REST API 구동 및 44개 API 전수 JSON 예시</div><div class="toc-sub">MgrApiServer · 44개 엔드포인트 명세표 · 44개 API 전수 JSON 예시 카드</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- CH0 -->
+  <div class="sec-hdr">
+    <div class="sec-num">CHAPTER 0</div>
+    <h2 class="sec-title">프로젝트 개요 &amp; myJava Mgr 아키텍처</h2>
+    <p class="sec-desc">이 프로젝트는 <code>C:\Java\myJava</code> 폴더의 전통적인 <strong>DBConnectionMgr (커넥션 풀 싱글톤) + XxxMgr + XxxBean 패턴</strong> 기반의 초경량 REST API 백엔드입니다.</p>
+  </div>
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:10px;">아키텍처 패턴</h3>
+  <div class="sgrid">
+    <div class="scard" style="border-top-color:#1a5276;"><h4>DBConnectionMgr</h4><ul><li>싱글톤 커넥션 풀</li><li>con = pool.getConnection()</li><li>pool.freeConnection(con, pstmt, rs)</li></ul></div>
+    <div class="scard" style="border-top-color:#0e6655;"><h4>XxxMgr (10개)</h4><ul><li>UserMgr, ExpenseMgr 등</li><li>Vector&lt;XxxBean&gt; 반환 방식</li><li>PreparedStatement SQL 처리</li></ul></div>
+    <div class="scard" style="border-top-color:#6c3483;"><h4>XxxBean (13개)</h4><ul><li>UserBean, ExpenseBean 등</li><li>JavaBean 규격 (Getter/Setter)</li><li>JSON 자동 직렬화</li></ul></div>
+  </div>
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin:20px 0 10px;">전체 DB 테이블 구조</h3>
+  <table class="rtable">
+    <tr><th>테이블</th><th>역할</th><th>주요 컬럼</th><th>연관 클래스</th></tr>
+    <tr><td><code>user</code></td><td>회원 정보</td><td>user_id, login_id, password, income, point_balance</td><td>UserMgr / UserBean / UserMgrHandler</td></tr>
+    <tr><td><code>expense</code></td><td>지출 내역</td><td>expense_id, user_id, medium_id, item_name, expense_amount, is_fixed</td><td>ExpenseMgr / ExpenseBean / ExpenseMgrHandler</td></tr>
+    <tr><td><code>large_category</code></td><td>지출 대분류</td><td>large_id, large_name</td><td>CategoryMgr / LargeCategoryBean / CategoryMgrHandler</td></tr>
+    <tr><td><code>medium_category</code></td><td>지출 중분류</td><td>medium_id, medium_name, large_id</td><td>CategoryMgr / MediumCategoryBean / CategoryMgrHandler</td></tr>
+    <tr><td><code>budget</code></td><td>예산 설정</td><td>budget_id, user_id, large_id(NULL=전체), limit_amount</td><td>BudgetMgr / BudgetBean / BudgetMgrHandler</td></tr>
+    <tr><td><code>app_setting</code></td><td>앱 알림 설정</td><td>setting_id, user_id, start_day, alert_weekday, alert_threshold</td><td>SettingMgr / AppSettingBean / SettingMgrHandler</td></tr>
+    <tr><td><code>point_history</code></td><td>포인트 적립/차감</td><td>point_id, user_id, point_type, point_amount</td><td>PointMgr / PointHistoryBean / PointMgrHandler</td></tr>
+    <tr><td><code>item</code></td><td>상점 상품 마스터</td><td>item_id, product_name, product_type, price_point</td><td>StoreMgr / ItemBean / StoreMgrHandler</td></tr>
+    <tr><td><code>purchase</code></td><td>구매 내역</td><td>purchase_id, user_id, item_id, used_point</td><td>StoreMgr / PurchaseBean / StoreMgrHandler</td></tr>
+    <tr><td><code>post</code></td><td>커뮤니티 게시글</td><td>post_id, user_id, content, like_count</td><td>PostMgr / PostBean / PostMgrHandler</td></tr>
+    <tr><td><code>post_like</code></td><td>게시글 좋아요</td><td>like_id, post_id, user_id</td><td>PostMgr / PostLikeBean / PostMgrHandler</td></tr>
+    <tr><td><code>friend</code></td><td>친구 관계</td><td>friend_id, user_id, friend_user_id, status(요청/수락)</td><td>FriendMgr / FriendBean / FriendMgrHandler</td></tr>
+    <tr><td><code>team_room</code></td><td>챌린지 팀룸</td><td>room_id, owner_id, room_name, start_date, end_date</td><td>ChallengeMgr / TeamRoomBean / ChallengeMgrHandler</td></tr>
+    <tr><td><code>team_member</code></td><td>팀룸 참여자</td><td>member_id, room_id, user_id, goal_amount</td><td>ChallengeMgr / TeamMemberBean / ChallengeMgrHandler</td></tr>
+  </table>
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin:24px 0 10px;">전체 ERD (Entity Relationship Diagram)</h3>
+  <img src="image.png" alt="전체 ERD" style="width:100%;border:1px solid #ddd;border-radius:8px;margin-bottom:20px;">
+
+  <hr class="sep">
+
+  <!-- CH1 -->
+  <div class="sec-hdr">
+    <div class="sec-num">CHAPTER 1</div>
+    <h2 class="sec-title">회원 관리 (User)</h2>
+    <p class="sec-desc">로그인, 회원가입, 마이페이지 정보 수정, 비밀번호 변경, 포인트 잔액 갱신을 담당합니다. <span class="tag td">UserBean</span> <span class="tag ta">UserMgr</span> <span class="tag ts">UserMgrHandler</span></p>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div class="ico" style="background:#dbeafe;color:#1e40af;">BEAN</div><div><div class="card-title">UserBean</div><div class="card-sub">USER 테이블 데이터 전달 객체 (JavaBean)</div></div></div>
+    <div class="card-body">
+      <table class="ftable">
+        <tr><th>필드명</th><th>타입</th><th>컬럼</th><th>설명</th></tr>
+        <tr><td><code>userId</code></td><td>int</td><td>user_id (PK)</td><td>회원 식별 번호 (AUTO_INCREMENT)</td></tr>
+        <tr><td><code>loginId</code></td><td>String</td><td>login_id</td><td>로그인 아이디 (중복 불가)</td></tr>
+        <tr><td><code>password</code></td><td>String</td><td>password</td><td>비밀번호</td></tr>
+        <tr><td><code>userName</code></td><td>String</td><td>user_name</td><td>이름</td></tr>
+        <tr><td><code>income</code></td><td>int</td><td>income</td><td>월 수입</td></tr>
+        <tr><td><code>pointBalance</code></td><td>int</td><td>point_balance</td><td>보유 포인트 잔액</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- CH2 -->
+  <div class="sec-hdr">
+    <div class="sec-num">CHAPTER 2</div>
+    <h2 class="sec-title">지출 관리 (Expense)</h2>
+    <p class="sec-desc">지출 내역 등록/수정/삭제/조회 및 총 지출 합계를 담당합니다. <span class="tag td">ExpenseBean</span> <span class="tag ta">ExpenseMgr</span> <span class="tag ts">ExpenseMgrHandler</span></p>
+  </div>
+  <div class="card">
+    <div class="card-hdr"><div class="ico" style="background:#dbeafe;color:#1e40af;">BEAN</div><div><div class="card-title">ExpenseBean</div><div class="card-sub">지출 내역 자바 빈즈</div></div></div>
+    <div class="card-body">
+      <table class="ftable">
+        <tr><th>필드명</th><th>타입</th><th>설명</th></tr>
+        <tr><td><code>expenseId</code></td><td>int</td><td>지출 식별 번호 (PK)</td></tr>
+        <tr><td><code>userId</code></td><td>int</td><td>회원 ID (FK)</td></tr>
+        <tr><td><code>mediumId</code></td><td>int</td><td>중분류 ID (FK)</td></tr>
+        <tr><td><code>itemName</code></td><td>String</td><td>지출 항목명</td></tr>
+        <tr><td><code>expenseAmount</code></td><td>int</td><td>지출 금액 (원)</td></tr>
+        <tr><td><code>spentDate</code></td><td>Date</td><td>지출 날짜</td></tr>
+        <tr><td><code>fixed</code></td><td>boolean</td><td>고정지출 여부</td></tr>
+        <tr><td><code>largeName</code> / <code>mediumName</code></td><td>String</td><td>JOIN 표시 전용 대/중분류명</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- CH10 -->
+  <div class="sec-hdr" style="padding-top:20px;">
+    <div class="sec-num">CHAPTER 10</div>
+    <h2 class="sec-title">myJava Mgr REST API 종합 명세표 &amp; JSON 요청/응답 예시</h2>
+    <p class="sec-desc">Base URL: <code>http://localhost:8080</code> (서버 실행법 + 종합 명세표 + 44개 API 전수 예시 카드)</p>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin-bottom:10px;">REST API 서버 실행 명령어</h3>
+  <div class="cblock">
+    <div class="ct">PowerShell에서 실행</div>
+    <pre># 1. Maven Exec 플러그인으로 실행
+C:\Java\apache-maven-3.9.6\bin\mvn.cmd exec:java -f C:\Java\expense-mgr-api\pom.xml
+
+# 2. Executable JAR로 실행
+java -jar C:\Java\expense-mgr-api\target\expense-mgr-api-1.0.0.jar
+
+# 3. IDE에서 실행
+src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
+  </div>
+
+  <!-- 전체 REST API 엔드포인트 종합 명세표 (rtable) -->
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin:24px 0 10px;">📊 전체 REST API 엔드포인트 종합 명세표 (10개 모듈 · 44개 API)</h3>
+  <table class="rtable">
+    <thead>
+      <tr>
+        <th style="width:110px;">Method</th>
+        <th style="width:280px;">URL Path</th>
+        <th>기능 명칭 및 설명</th>
+        <th style="width:280px;">요청 파라미터 / Body 데이터</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- 1. 회원 -->
+      <tr class="mod-hdr"><td colspan="4">1. 회원 관리 (UserMgrHandler) — /api/users</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/users/login</code></td><td>로그인 인증</td><td>JSON Body: <code>{"loginId":"...", "password":"..."}</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/users/register</code></td><td>신규 회원가입</td><td>JSON Body: <code>UserBean</code> 객체</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/users/check-duplicate</code></td><td>아이디 중복 확인</td><td>Query Param: <code>?loginId=hong123</code></td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/users/{userId}</code></td><td>회원 상세 정보 조회</td><td>Path Variable: <code>userId</code></td></tr>
+      <tr><td><span class="mbadge upd">PUT</span></td><td><code>/api/users/{userId}</code></td><td>회원 정보 수정</td><td>Path: <code>userId</code>, Body: <code>UserBean</code></td></tr>
+      <tr><td><span class="mbadge upd">PUT</span></td><td><code>/api/users/{userId}/password</code></td><td>비밀번호 변경</td><td>Path: <code>userId</code>, Body: <code>{"newPassword":"..."}</code></td></tr>
+
+      <!-- 2. 지출 -->
+      <tr class="mod-hdr"><td colspan="4">2. 지출 관리 (ExpenseMgrHandler) — /api/expenses</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/expenses</code></td><td>회원 지출 목록 (Vector&lt;ExpenseBean&gt;)</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/expenses/{expenseId}</code></td><td>지출 내역 단건 상세 조회</td><td>Path Variable: <code>expenseId</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/expenses</code></td><td>지출 신규 등록</td><td>JSON Body: <code>ExpenseBean</code> 객체</td></tr>
+      <tr><td><span class="mbadge upd">PUT</span></td><td><code>/api/expenses/{expenseId}</code></td><td>지출 내역 수정</td><td>Path: <code>expenseId</code>, Body: <code>ExpenseBean</code></td></tr>
+      <tr><td><span class="mbadge del">DELETE</span></td><td><code>/api/expenses/{expenseId}</code></td><td>지출 내역 삭제</td><td>Path Variable: <code>expenseId</code></td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/expenses/total</code></td><td>총 지출 합계 금액</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge lgc">GET</span></td><td><code>/api/expenses/stats/category</code></td><td>대분류별 지출 합계 및 비율(%)</td><td>Query Param: <code>?userId=1&amp;startDay=25</code></td></tr>
+
+      <!-- 3. 카테고리 -->
+      <tr class="mod-hdr"><td colspan="4">3. 카테고리 관리 (CategoryMgrHandler) — /api/categories</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/categories/large</code></td><td>전체 대분류 카테고리 목록</td><td>-</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/categories/medium/by-large/{largeId}</code></td><td>선택한 대분류의 하위 중분류 목록</td><td>Path Variable: <code>largeId</code></td></tr>
+
+      <!-- 4. 예산 -->
+      <tr class="mod-hdr"><td colspan="4">4. 예산 관리 (BudgetMgrHandler) — /api/budgets</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/budgets</code></td><td>회원 설정 예산 목록</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/budgets</code></td><td>예산 등록 (전체 예산 시 largeId=null)</td><td>JSON Body: <code>BudgetBean</code> 객체</td></tr>
+
+      <!-- 5. 포인트 -->
+      <tr class="mod-hdr"><td colspan="4">5. 포인트 시스템 (PointMgrHandler) — /api/points</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/points/balance</code></td><td>포인트 잔액 조회</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/points/earn</code></td><td>포인트 적립 (+amount)</td><td>JSON Body: <code>{"userId":1, "pointType":"출석", "amount":10}</code></td></tr>
+
+      <!-- 6. 커뮤니티 -->
+      <tr class="mod-hdr"><td colspan="4">6. 커뮤니티 (PostMgrHandler) — /api/posts</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/posts</code></td><td>전체 게시글 피드 목록</td><td>-</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/posts/{postId}/like</code></td><td>게시글 좋아요</td><td>Query Param: <code>?userId=1</code></td></tr>
+
+      <!-- 7. 친구 -->
+      <tr class="mod-hdr"><td colspan="4">7. 친구 관리 (FriendMgrHandler) — /api/friends</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/friends</code></td><td>수락 완료된 친구 목록</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/friends/request</code></td><td>친구 요청 보내기</td><td>JSON Body: <code>FriendBean</code> 객체</td></tr>
+
+      <!-- 8. 팀 챌린지 -->
+      <tr class="mod-hdr"><td colspan="4">8. 팀 챌린지 (ChallengeMgrHandler) — /api/challenges</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/challenges/rooms</code></td><td>전체 팀룸 목록 조회</td><td>-</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/challenges/rooms/join</code></td><td>팀룸 참가 신청</td><td>JSON Body: <code>TeamMemberBean</code></td></tr>
+
+      <!-- 9. 상점 -->
+      <tr class="mod-hdr"><td colspan="4">9. 상점 (StoreMgrHandler) — /api/store</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/store/items</code></td><td>전체 상품 목록</td><td>-</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/store/buy</code></td><td>포인트 상품 구매</td><td>JSON Body: <code>{"userId":1, "itemId":2}</code></td></tr>
+
+      <!-- 10. 설정 -->
+      <tr class="mod-hdr"><td colspan="4">10. 앱 설정 (SettingMgrHandler) — /api/settings</td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/settings</code></td><td>회원 앱 설정 정보 조회</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/settings</code></td><td>앱 설정 등록/수정</td><td>JSON Body: <code>AppSettingBean</code> 객체</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 전체 JSON 요청/응답 예시 카드 -->
+  <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin:30px 0 10px;">💻 전체 JSON 요청/응답 예시</h3>
+
+  <!-- 1. 회원 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-1. POST /api/users/login (로그인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "hong123", "password": "password123"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "phone": "010-1234-5678", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-2. POST /api/users/register (신규 회원가입)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "newuser", "password": "pw1234!@", "userName": "신규회원", "phone": "010-9999-8888", "income": 2000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "회원가입이 성공적으로 완료되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-3. GET /api/users/check-duplicate?loginId=hong123 (아이디 중복확인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"loginId": "hong123", "duplicate": true, "message": "이미 사용 중인 아이디입니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-4. GET /api/users/1 (회원 상세정보 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-5. PUT /api/users/1 (회원정보 수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userName": "홍길동", "phone": "010-5555-7777", "income": 4000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "회원정보가 수정되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-6. PUT /api/users/1/password (비밀번호 변경)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"newPassword": "newPassword5678!"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "비밀번호가 변경되었습니다."}</pre></div></div></div>
+
+  <!-- 2. 지출 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">2-1. GET /api/expenses?userId=1 (지출 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK - ExpenseBean 배열)</div><pre>[{"expenseId": 101, "userId": 1, "largeName": "식비", "mediumName": "카페/디저트", "itemName": "스타벅스 아메리카노", "expenseAmount": 4500}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">2-2. GET /api/expenses/101 (지출 단건 상세)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"expenseId": 101, "userId": 1, "mediumId": 3, "itemName": "스타벅스 아메리카노", "expenseAmount": 4500}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">2-3. POST /api/expenses (지출 신규 등록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "mediumId": 3, "itemName": "투썸 케이크", "expenseAmount": 6500, "spentDate": "2026-08-12"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "지출이 등록되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">2-4. PUT /api/expenses/101 (지출 수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"mediumId": 3, "itemName": "스타벅스 라떼", "expenseAmount": 5000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "지출이 수정되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico del">DELETE</div><div><div class="card-title">2-5. DELETE /api/expenses/101 (지출 삭제)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "지출이 삭제되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">2-6. GET /api/expenses/total?userId=1 (총 지출 합계)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"userId": 1, "totalExpense": 635000}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico lgc">GET</div><div><div class="card-title">2-7. GET /api/expenses/stats/category?userId=1&amp;startDay=25 (대분류 집계 %)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"largeName": "식비", "totalAmount": 285000, "percentage": 44.9}, {"largeName": "교통", "totalAmount": 150000, "percentage": 23.6}]</pre></div></div></div>
+
+  <!-- 3. 카테고리 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">3-1. GET /api/categories/large (전체 대분류)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"largeId": 1, "largeName": "식비"}, {"largeId": 2, "largeName": "교통/차량"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">3-2. GET /api/categories/medium/by-large/1 (하위 중분류)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"mediumId": 1, "largeId": 1, "mediumName": "장보기"}, {"mediumId": 3, "largeId": 1, "mediumName": "카페/디저트"}]</pre></div></div></div>
+
+  <!-- 4. 예산 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">4-1. GET /api/budgets?userId=1 (예산 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"budgetId": 11, "userId": 1, "largeId": 1, "limitAmount": 500000, "budgetScope": "식비"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">4-2. POST /api/budgets (예산 등록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "largeId": 2, "limitAmount": 300000, "budgetScope": "교통"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "예산이 등록되었습니다."}</pre></div></div></div>
+
+  <!-- 5. 포인트 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">5-1. GET /api/points/balance?userId=1 (포인트 잔액)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"userId": 1, "pointBalance": 1250}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">5-2. POST /api/points/earn (포인트 적립)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "pointType": "출석체크", "amount": 10}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "10 포인트가 적립되었습니다."}</pre></div></div></div>
+
+  <!-- 6. 커뮤니티 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">6-1. GET /api/posts (전체 피드)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"postId": 5, "userId": 2, "content": "이번 주 외식 안하기 성공!", "likeCount": 12}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">6-2. POST /api/posts (게시글 작성)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "content": "오늘부터 가계부 작성 시작합니다!"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "게시글이 등록되었습니다."}</pre></div></div></div>
+
+  <!-- 7. 친구 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">7-1. GET /api/friends?userId=1 (수락 친구 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"friendId": 1, "userId": 1, "friendUserId": 2, "status": "수락", "friendUserName": "김철수"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">7-2. POST /api/friends/request (친구 요청)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "friendUserId": 2}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "친구 요청을 보냈습니다."}</pre></div></div></div>
+
+  <!-- 8. 팀 챌린지 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">8-1. GET /api/challenges/rooms (전체 팀룸 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"roomId": 1, "ownerId": 1, "ownerName": "홍길동", "roomName": "8월 절약왕", "startDate": "2026-08-01", "endDate": "2026-08-31"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">8-2. POST /api/challenges/rooms/join (팀룸 참가)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "goalAmount": 400000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "팀룸에 참가하셨습니다."}</pre></div></div></div>
+
+  <!-- 9. 상점 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">9-1. GET /api/store/items (상품 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"itemId": 1, "productName": "스타벅스 쿠폰", "pricePoint": 4500}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">9-2. POST /api/store/buy (상품 구매)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "itemId": 1}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "상품 구매 성공!"}</pre></div></div></div>
+
+  <!-- 10. 앱 설정 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">10-1. GET /api/settings?userId=1 (앱 설정 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"settingId": 1, "userId": 1, "startDay": "2026-08-25", "alertWeekday": "MON", "alertThreshold": 80}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">10-2. POST /api/settings (앱 설정 등록/수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "startDay": "2026-08-25", "alertWeekday": "FRI", "alertThreshold": 90}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "앱 설정이 성공적으로 변경되었습니다."}</pre></div></div></div>
+
+</div>
+
+<div class="footer">
+  <div><strong>계층형 지출 관리 시스템</strong> — myJava Mgr REST API 명세서 (C:\Java\expense-mgr-api)</div>
+  <div style="text-align:right;">DB: <strong>richman</strong> &nbsp;|&nbsp; myJava(DBConnectionMgr + XxxMgr + XxxBean) 방식 <br>생성일: 2026-08-12 &nbsp;|&nbsp; PDF 저장: 브라우저에서 Ctrl+P → PDF 저장</div>
+</div>
+</body>
+</html>
