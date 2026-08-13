@@ -13,21 +13,21 @@
 
 
 .gitignore 충동 방지
-```
-echo "bin/" > .gitignore
-```
+
+```echo "bin/" > .gitignore
+
 git 시작 및 파일 포장
 ```
 git init
 git add .
 git commit -m "Init: text"
-```
+
 브랜치 이름 변경 및 깃허브 주소 연결
 ```
 git branch -M kdn
 git remote add origin [깃허브 저장소 URL 주소]
-```
+
 push
 ```
 git push -u origin kdn
-```
+
