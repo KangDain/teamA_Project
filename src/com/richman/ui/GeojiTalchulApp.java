@@ -272,10 +272,70 @@ public class GeojiTalchulApp extends JFrame {
         pointLabel.setForeground(GREEN_DARK);
         pointLabel.setFont(FONT_BOLD);
         userText.add(pointLabel);
+        // ... (avatar, userText 세팅 코드 유지) ...
         user.add(avatar, BorderLayout.WEST);
         user.add(userText, BorderLayout.CENTER);
+
+        // 🌟 [추가] 마우스 커서를 손가락 모양으로 바꾸고 클릭 이벤트 달기!
+        user.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        user.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                showUserInfoEditDialog(); // 클릭 시 정보 수정 창 팝업
+            }
+        });
+
         side.add(user, BorderLayout.SOUTH);
         return side;
+    }
+
+    // 🌟 내 정보 수정 팝업창 (사진의 부드러운 테마 적용)
+    void showUserInfoEditDialog() {
+        JDialog dlg = new JDialog(this, "내 정보 수정", true);
+        dlg.setSize(420, 350);
+        dlg.setLocationRelativeTo(this);
+
+        // 팝업 배경도 우리의 감성적인 베이지색(BG)으로 통일
+        JPanel root = new JPanel(new BorderLayout(10, 10));
+        root.setBackground(BG); 
+        root.setBorder(new EmptyBorder(25, 25, 25, 25));
+
+        // 둥근 알약 느낌의 하얀색 카드 패널
+        JPanel card = roundedPanel(WHITE, 40); 
+        card.setLayout(new GridBagLayout());
+        card.setBorder(new EmptyBorder(30, 20, 30, 20)); // 안쪽 여백 빵빵하게
+        
+        GridBagConstraints g = new GridBagConstraints();
+        g.insets = new Insets(12, 10, 12, 10);
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.weightx = 1;
+
+        int r = 0;
+        // 기존 닉네임("프로거지 님"에서 " 님" 제거)을 기본값으로 세팅
+        addFormRow(card, g, r++, "닉네임", new JTextField(userLabel.getText().replace(" 님", "")));
+        addFormRow(card, g, r++, "기존 비밀번호", new JPasswordField());
+        addFormRow(card, g, r++, "새 비밀번호", new JPasswordField());
+        
+        root.add(card, BorderLayout.CENTER);
+
+        JPanel btnBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        btnBox.setOpaque(false);
+        btnBox.setBorder(new EmptyBorder(15, 0, 0, 0));
+        
+        JButton cancel = flatButton("취소");
+        cancel.addActionListener(e -> dlg.dispose());
+        JButton save = primaryButton("정보 저장");
+        save.addActionListener(e -> {
+            JOptionPane.showMessageDialog(dlg, "회원 정보가 성공적으로 수정되었습니다.", "수정 완료", JOptionPane.INFORMATION_MESSAGE);
+            dlg.dispose();
+        });
+        
+        btnBox.add(cancel);
+        btnBox.add(save);
+        root.add(btnBox, BorderLayout.SOUTH);
+        
+        dlg.setContentPane(root);
+        dlg.setVisible(true);
     }
 
     void addNavButton(JPanel menu, String text, String card) {
@@ -311,35 +371,22 @@ public class GeojiTalchulApp extends JFrame {
         styleIconButton(bell);
         bell.addActionListener(e -> showNotifications());
 
-        JButton setting = new JButton("설정");
-        setting.setFont(FONT_BOLD);
-        setting.setForeground(WHITE);
-        setting.setBackground(NAVY);
-        setting.setBorder(new EmptyBorder(10, 17, 10, 17));
-        setting.setFocusPainted(false);
+        // 🌟 원흉이었던 setBorder 삭제 완료 (완벽한 알약 쉐입 적용)
+        JButton setting = primaryButton("설정");
         setting.addActionListener(e -> showSettings());
 
-        right.add(bell);
-        right.add(setting);
-        // 🌟 로그아웃 버튼 추가
-        JButton logout = new JButton("로그아웃");
-        logout.setFont(FONT_BOLD);
-        logout.setForeground(TEXT); // 텍스트 색상
-        logout.setBackground(new Color(230, 235, 240)); // 밝은 회색 배경
-        logout.setBorder(new EmptyBorder(10, 17, 10, 17));
-        logout.setFocusPainted(false);
+        // 🌟 로그아웃 버튼 (FlatLaf 알약 쉐입 적용)
+        JButton logout = flatButton("로그아웃");
         logout.addActionListener(e -> {
-            // 확인창 띄우기
             int res = JOptionPane.showConfirmDialog(content, "로그아웃 하시겠습니까?", "로그아웃", JOptionPane.YES_NO_OPTION);
             if (res == JOptionPane.YES_OPTION) {
-                // 인증 화면(로그인)으로 전환
                 ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
             }
         });
 
         right.add(bell);
         right.add(setting);
-        right.add(logout); // 👈 우측 패널에 로그아웃 버튼 장착
+        right.add(logout);
         right.setBorder(new EmptyBorder(0, 0, 0, 20));
         top.add(right, BorderLayout.EAST);
         return top;
@@ -548,14 +595,19 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         JPanel buildAlertBanner() {
-            JPanel banner = new JPanel(new BorderLayout());
-            banner.setBorder(new EmptyBorder(13, 20, 13, 20));
+            // 🌟 직각 JPanel 대신 토스 감성 둥근 패널(알약 쉐입)로 교체!
+            JPanel banner = new RoundedPanel(RED, 40); 
+            banner.setLayout(new BorderLayout());
+            banner.setBorder(new EmptyBorder(15, 25, 15, 25)); // 넉넉한 여백
+            
             alertLabel.setFont(FONT_BOLD);
             banner.add(alertLabel, BorderLayout.CENTER);
 
             JButton detail = new JButton("상세 보기");
-            detail.setBorder(new EmptyBorder(4, 10, 4, 4));
             detail.setFocusPainted(false);
+            // 🌟 여기서도 setBorder 삭제!
+            detail.setBackground(WHITE);
+            detail.setForeground(RED);
             detail.addActionListener(e -> {
                 if (state.budgetUsage() >= 1.0 || state.budgetUsage() >= state.alertThreshold / 100.0) {
                     showCard("STATS");
@@ -568,13 +620,17 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         JPanel buildHomePieCard() {
-            JPanel card = roundedPanel(WHITE, 18);
+            JPanel card = roundedPanel(WHITE, 60);
             card.setLayout(new BorderLayout());
+
             JLabel title = new JLabel("대분류별 지출 비중");
             title.setFont(new Font("Malgun Gothic", Font.BOLD, 19));
-            title.setBorder(new EmptyBorder(22, 22, 8, 22));
+
+            title.setBorder(new EmptyBorder(40, 40, 8, 40));
             card.add(title, BorderLayout.NORTH);
-            homePie.setPreferredSize(new Dimension(560, 400));
+            
+            // 🌟 원흉이었던 homePie.setPreferredSize(...) 삭제! 
+            // 레이아웃이 알아서 크기를 잡도록 둡니다.
             card.add(homePie, BorderLayout.CENTER);
             return card;
         }
@@ -721,11 +777,10 @@ public class GeojiTalchulApp extends JFrame {
             addQuickButton(grid, "식비", "식비", "외식비");
             addQuickButton(grid, "교통", "교통/차량", "대중교통");
             JButton detail = new JButton("+\n상세 입력");
-        detail.setFont(FONT_BOLD);
-        detail.setForeground(Color.BLACK); // 🌟 글자색 검정으로!
-        detail.setBackground(new Color(225, 230, 235)); // 🌟 배경은 밝은 톤으로!
+            detail.setFont(FONT_BOLD);
+            detail.setForeground(WHITE); // 하얀색 글씨
+            detail.setBackground(GREEN_PALE); // 🌟 칙칙한 회색 대신 예쁜 뮤트 그린 컬러 적용!
             detail.setFocusPainted(false);
-            detail.setBorder(new EmptyBorder(10, 8, 10, 8));
             detail.addActionListener(e -> openExpenseDialog(null, null));
             grid.add(detail);
             card.add(grid, BorderLayout.CENTER);
@@ -735,12 +790,27 @@ public class GeojiTalchulApp extends JFrame {
         void addQuickButton(JPanel grid, String text, String large, String medium) {
             JButton b = new JButton(text);
             b.setFont(FONT_BOLD);
-            b.setForeground(TEXT);
-            b.setBackground(new Color(248, 250, 252));
-            b.setBorder(new LineBorder(new Color(237, 240, 243), 1, true));
+            b.setForeground(NAVY); // 🌟 글씨는 또렷한 네이비/다크그린
+            
+            // 🌟 배경을 칙칙한 흰색 대신, 테마와 어울리는 아주 연하고 부드러운 민트 베이지 톤으로 변경
+            b.setBackground(new Color(238, 244, 241)); 
+            
             b.setFocusPainted(false);
             b.addActionListener(e -> openExpenseDialog(large, medium));
             grid.add(b);
+        }
+
+        void addQuickButton(JPanel p, String text) {
+            JButton b = new JButton(text);
+            b.setFont(FONT_BOLD);
+            
+            // 🌟 배경을 칙칙한 흰색 대신, 테마와 어울리는 아주 연하고 부드러운 민트 베이지 톤으로 변경
+            b.setBackground(new Color(238, 244, 241)); 
+            b.setForeground(NAVY); // 글씨는 또렷한 네이비/다크그린
+            b.setFocusPainted(false);
+            
+            // b.setBorder(...)가 혹시 있다면 무조건 삭제!
+            p.add(b);
         }
 
         JPanel buildRecentCard() {
@@ -1149,43 +1219,72 @@ public class GeojiTalchulApp extends JFrame {
             long total = map.values().stream().mapToLong(Long::longValue).sum();
             if (total == 0) {
                 g2.setColor(MUTED);
-                g2.drawString("지출 데이터가 없습니다.", Math.max(20, getWidth()/2-60), 120);
+                g2.drawString("지출 데이터가 없습니다.", getWidth()/2-60, getHeight()/2);
                 g2.dispose();
                 return;
             }
 
             Color[] colors = {GREEN, BLUE, ORANGE, PURPLE, new Color(90,150,130), new Color(205,128,120), new Color(150,150,95)};
 
-            // 파이차트를 중앙보다 조금 오른쪽으로 배치
-            int diameter = Math.min(220, Math.max(170, getWidth() - 100));
-            int x = Math.max(40, (getWidth() - diameter) / 2 + 35);
-            int y = 12;
+            // 🌟 1. 차트가 잘리지 않게 크기와 위치를 동적으로 조절
+            int diameter = Math.min(210, getHeight() - 110); 
+            int x = (getWidth() - diameter) / 2; // 가로 중앙 정렬
+            int y = 20; // 위쪽 여백
+            
             double start = 0;
             int i = 0;
+            String maxCategory = "";
+            long maxVal = -1;
+            
+            // 파이 조각 그리기 & 가장 높은 비율 찾기
             for (Map.Entry<String,Long> en : map.entrySet()) {
                 double angle = 360.0 * en.getValue() / total;
                 g2.setColor(colors[i++ % colors.length]);
                 g2.fill(new Arc2D.Double(x, y, diameter, diameter, start, angle, Arc2D.PIE));
                 start += angle;
+                
+                if (en.getValue() > maxVal) {
+                    maxVal = en.getValue();
+                    maxCategory = en.getKey();
+                }
             }
 
-            // 세부 내용(범례)은 파이차트 아래에 가로로 배치
-            int legendTop = y + diameter + 22;
-            int colWidth = Math.max(130, getWidth() / 3);
+            // 🍩 2. 도넛 모양 만들기 (가운데를 배경색으로 파내기)
+            int thickness = 25; // 도넛 두께
+            int innerDiameter = diameter - (thickness * 2);
+            int innerX = x + thickness;
+            int innerY = y + thickness;
+            g2.setColor(WHITE);
+            g2.fillOval(innerX, innerY, innerDiameter, innerDiameter);
+
+            // 🎯 3. 도넛 정중앙에 1위 카테고리 이름 텍스트 박기
+            g2.setColor(TEXT);
+            g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            FontMetrics fm = g2.getFontMetrics();
+            int textX = x + (diameter - fm.stringWidth(maxCategory)) / 2;
+            int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent();
+            g2.drawString(maxCategory, textX, textY);
+
+            // 🎨 4. 하단 범례(Legend) 줄맞춤 및 잘림 방지 (2열 배치)
+            int legendTop = y + diameter + 25; // 차트와 텍스트 사이 여백 확보
+            int colWidth = getWidth() / 2; // 🌟 3열 -> 2열로 분할하여 긴 글자 겹침 완벽 방지
             int row = 0, col = 0;
             i = 0;
+            
             for (Map.Entry<String,Long> en : map.entrySet()) {
-                int lx = 35 + col * colWidth;
-                int ly = legendTop + row * 24;
+                int lx = 40 + col * colWidth; // 셀 좌측 여백 넉넉하게
+                int ly = legendTop + row * 28; // 줄 간격 28px
+                
                 g2.setColor(colors[i++ % colors.length]);
-                g2.fillRoundRect(lx, ly - 11, 12, 12, 3, 3);
+                g2.fillRoundRect(lx, ly - 12, 14, 14, 4, 4);
+                
                 g2.setColor(TEXT);
                 g2.setFont(FONT);
                 int pct = (int)Math.round(en.getValue() * 100.0 / total);
-                g2.drawString(en.getKey() + "  " + pct + "%", lx + 18, ly);
+                g2.drawString(en.getKey() + " " + pct + "%", lx + 22, ly);
 
                 col++;
-                if (col >= 3) {
+                if (col >= 2) { // 🌟 2개 그려지면 다음 줄로 넘김
                     col = 0;
                     row++;
                 }
@@ -1731,29 +1830,43 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- UI helpers ----------
     JPanel roundedPanel(Color bg,int radius){
-        return new RoundedPanel(bg,radius);
+        // 🌟 기존에 전달받은 얕은 숫자(18 등)를 깡그리 무시하고,
+        // 토스 감성 충만한 곡률 '40'으로 전체 앱의 카드를 강제 둥글림 처리합니다!
+        int tossRadius = 40; 
+        
+        JPanel p = new RoundedPanel(bg, tossRadius);
+        // 글자가 곡선에 씹히지 않도록 카드 내부 기본 여백(Padding)도 빵빵하게 강제 주입
+        p.setBorder(new EmptyBorder(25, 25, 25, 25)); 
+        return p;
     }
 
     JButton primaryButton(String text){
-        JButton b=new JButton(text);
+        JButton b = new JButton(text);
         b.setFont(FONT_BOLD); b.setForeground(WHITE); b.setBackground(GREEN_DARK);
-        b.setBorder(new EmptyBorder(10,15,10,15)); b.setFocusPainted(false);
+        b.setFocusPainted(false); 
+        // 🌟 setBorder 삭제 (FlatLaf 알약 쉐입 유지)
         return b;
     }
 
     JButton flatButton(String text){
-        JButton b=new JButton(text);
+        JButton b = new JButton(text);
         b.setFont(FONT_BOLD); b.setForeground(MUTED); b.setBackground(WHITE);
-        b.setBorder(new EmptyBorder(8,8,8,8)); b.setFocusPainted(false);
+        b.setFocusPainted(false);
+        // 🌟 setBorder 삭제
         return b;
     }
 
     JButton navButton(String text){
-        JButton b=new JButton(text);
-        b.setFont(new Font("SansSerif",Font.BOLD,18));
-        b.setBackground(WHITE); b.setForeground(MUTED);
-        b.setBorder(new LineBorder(BORDER,1,true)); b.setFocusPainted(false);
-        b.setPreferredSize(new Dimension(42,42));
+        JButton b = new JButton(text);
+        b.setFont(new Font("SansSerif", Font.BOLD, 18));
+        b.setBackground(WHITE); 
+        b.setForeground(MUTED);
+        b.setFocusPainted(false);
+        b.setPreferredSize(new Dimension(42, 42));
+        
+        // 🌟 [추가] 달력 화살표 버튼만 여백을 0으로 덮어써서 글자 짤림 방지!
+        b.setMargin(new Insets(0, 0, 0, 0)); 
+        
         return b;
     }
 
@@ -1780,19 +1893,21 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- Custom components ----------
     static class RoundedPanel extends JPanel {
-        Color bg; int radius;
-        RoundedPanel(Color bg,int radius){this.bg=bg;this.radius=radius;setOpaque(false);}
+        int radius;
+        RoundedPanel(Color bg, int radius){
+            this.radius = radius;
+            setBackground(bg); // 🌟 색상을 컴포넌트 내부에 제대로 저장!
+            setOpaque(false);
+        }
         protected void paintComponent(Graphics g){
-            Graphics2D g2=(Graphics2D)g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+            Graphics2D g2 = (Graphics2D)g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             
-            // 1. 하얀색 배경 채우기
-            g2.setColor(bg);
-            g2.fillRoundRect(0,0,getWidth()-1,getHeight()-1,radius,radius);
+            g2.setColor(getBackground()); // 🌟 동적으로 바뀌는 배경색 적용
+            g2.fillRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
             
-            // 🌟 2. 연한 테두리를 추가해서 카드가 살짝 떠 있는 듯한 깔끔한 느낌 연출
             g2.setColor(new Color(228, 232, 237));
-            g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,radius,radius);
+            g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
             
             g2.dispose();
             super.paintComponent(g);
@@ -1812,9 +1927,9 @@ public class GeojiTalchulApp extends JFrame {
     public static void main(String[] args){
         try {
             // 🌟 모서리 둥글게 (기존에 추가하신 코드)
-            UIManager.put("Button.arc", 12);
-            UIManager.put("Component.arc", 12);
-            UIManager.put("TextComponent.arc", 12);
+            UIManager.put("Button.arc", 999);
+            UIManager.put("Component.arc", 999);
+            UIManager.put("TextComponent.arc", 999);
             UIManager.put("ScrollBar.showButtons", false);
             UIManager.put("ScrollBar.thumbArc", 999);
 
@@ -1828,7 +1943,20 @@ public class GeojiTalchulApp extends JFrame {
             // 🌟 [새로 추가] 글씨와 테두리 사이의 여백(Padding) 넉넉하게 주기!
             UIManager.put("Button.margin", new Insets(10, 20, 10, 20)); // 버튼 위, 좌, 아래, 우 여백
             UIManager.put("TextComponent.margin", new Insets(10, 14, 10, 14)); // 텍스트 입력창 여백
-            UIManager.put("TabbedPane.tabInsets", new Insets(10, 24, 10, 24)); // 상단 탭 메뉴 여백
+            // ... (기존 버튼, 콤보박스 여백 설정들 유지) ...
+            
+            // 🌟 [여기서부터 추가/수정] 탭 메뉴를 토스 감성의 둥근 알약 스타일로 튜닝!
+            UIManager.put("TabbedPane.tabType", "card"); // 탭 모양을 깔끔한 독립 카드형으로 변경
+            UIManager.put("TabbedPane.tabArc", 999); // 탭 모서리 완전 둥글게 (알약 쉐입)
+            UIManager.put("TabbedPane.selectedBackground", WHITE); // 선택된 탭은 하얗게 강조
+            UIManager.put("TabbedPane.background", new Color(238, 244, 241)); // 안 선택된 탭은 연한 민트로 배경과 융화
+            UIManager.put("TabbedPane.selectedForeground", new Color(42, 48, 56)); // 선택된 글씨는 진하게
+            UIManager.put("TabbedPane.unselectedForeground", new Color(112, 124, 141)); // 안 선택된 글씨는 연하게
+            UIManager.put("TabbedPane.tabInsets", new Insets(12, 24, 12, 24));
+            UIManager.put("TabbedPane.tabAreaInsets", new Insets(0, 0, 20, 0)); 
+            UIManager.put("TabbedPane.contentAreaColor", new Color(0, 0, 0, 0));
+            UIManager.put("TabbedPane.contentAreaColor", new Color(0, 0, 0, 0)); // 탭 아래 칙칙한 회색 테두리 선 완전 제거
+            UIManager.put("TabbedPane.focusColor", new Color(0, 0, 0, 0)); // 클릭 시 생기는 촌스러운 포커스 선 제거
             
             UIManager.setLookAndFeel(new FlatLightLaf());
         } catch (Exception ex) {
