@@ -623,15 +623,8 @@ public class GeojiTalchulApp extends JFrame {
             JPanel card = roundedPanel(WHITE, 60);
             card.setLayout(new BorderLayout());
 
-            JLabel title = new JLabel("대분류별 지출 비중");
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 19));
-
-            title.setBorder(new EmptyBorder(40, 40, 8, 40));
-            card.add(title, BorderLayout.NORTH);
-            
-            // 🌟 원흉이었던 homePie.setPreferredSize(...) 삭제! 
-            // 레이아웃이 알아서 크기를 잡도록 둡니다.
             card.add(homePie, BorderLayout.CENTER);
+
             return card;
         }
 
@@ -751,11 +744,19 @@ public class GeojiTalchulApp extends JFrame {
 
             card.add(left, BorderLayout.WEST);
 
-            JLabel character = new JLabel("<html><center><font size='+6'>●<br/>●</font><br/>거지탈출<br/>캐릭터</center></html>");
-            character.setForeground(WHITE);
-            character.setFont(FONT_BOLD);
+            ImageIcon icon = new ImageIcon(
+                    getClass().getResource("/com/richman/ui/poorman.png")
+            );
+
+            // 이미지 크기 조절
+            Image image = icon.getImage().getScaledInstance(
+                    160, 160, Image.SCALE_SMOOTH
+            );
+
+            JLabel character = new JLabel(new ImageIcon(image));
             character.setHorizontalAlignment(SwingConstants.CENTER);
             character.setPreferredSize(new Dimension(220, 180));
+
             card.add(character, BorderLayout.EAST);
             return card;
         }
@@ -1037,31 +1038,77 @@ public class GeojiTalchulApp extends JFrame {
             JPanel list = new JPanel();
             list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
             list.setBackground(WHITE);
+            list.setBorder(new EmptyBorder(5, 10, 5, 10));
 
             for (Expense x : items) {
-                JPanel row = new JPanel(new BorderLayout(10,0));
+
+                JPanel row = new JPanel(new BorderLayout(15, 0));
                 row.setBackground(WHITE);
-                row.setBorder(new CompoundBorder(new MatteBorder(0,0,1,0,BORDER),
-                        new EmptyBorder(10,4,10,4)));
-                JLabel text = new JLabel("<html><b>" + esc(x.item) + "</b><br><font color='#71808F'>" +
-                        esc(x.large) + " > " + esc(x.medium) + " > " + esc(x.small) + "</font></html>");
-                JLabel amt = new JLabel("-" + won(x.amount));
-                amt.setForeground(RED);
-                amt.setFont(FONT_BOLD);
+
+                row.setBorder(new CompoundBorder(
+                        new MatteBorder(0, 0, 1, 0, BORDER),
+                        new EmptyBorder(12, 8, 12, 8)
+                ));
+
+                // 지출 이름 + 분류
+                JPanel info = new JPanel();
+                info.setOpaque(false);
+                info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+
+                JLabel itemLabel = new JLabel(esc(x.item));
+                itemLabel.setFont(FONT_BOLD);
+
+                JLabel categoryLabel = new JLabel(
+                        esc(x.large) + " > " + esc(x.medium)
+                );
+                categoryLabel.setFont(
+                        new Font("Malgun Gothic", Font.PLAIN, 12)
+                );
+                categoryLabel.setForeground(MUTED);
+
+                info.add(itemLabel);
+                info.add(Box.createVerticalStrut(4));
+                info.add(categoryLabel);
+
+                // 금액
+                JLabel amountLabel = new JLabel("-" + won(x.amount));
+                amountLabel.setFont(FONT_BOLD);
+                amountLabel.setForeground(RED);
+
+                // 삭제 버튼
                 JButton del = new JButton("삭제");
                 del.setForeground(RED);
                 del.setBackground(WHITE);
-                del.setBorder(new LineBorder(new Color(240,190,190), 1, true));
                 del.setFocusPainted(false);
+                del.setBorder(new LineBorder(
+                        new Color(240, 190, 190), 1, true
+                ));
+
                 del.addActionListener(e -> {
                     state.expenses.remove(x);
                     dlg.dispose();
                     refreshAll();
                     showDateDetail(date);
                 });
-                row.add(text, BorderLayout.CENTER);
-                row.add(amt, BorderLayout.EAST);
-                row.add(del, BorderLayout.WEST);
+
+                // 오른쪽 영역
+                JPanel right = new JPanel(new FlowLayout(
+                        FlowLayout.RIGHT, 10, 0
+                ));
+                right.setOpaque(false);
+
+                right.add(amountLabel);
+                right.add(del);
+
+                row.add(info, BorderLayout.CENTER);
+                row.add(right, BorderLayout.EAST);
+
+                // 한 지출 = 한 줄
+                row.setMaximumSize(new Dimension(
+                        Integer.MAX_VALUE,
+                        65
+                ));
+
                 list.add(row);
             }
 
@@ -1227,7 +1274,7 @@ public class GeojiTalchulApp extends JFrame {
             Color[] colors = {GREEN, BLUE, ORANGE, PURPLE, new Color(90,150,130), new Color(205,128,120), new Color(150,150,95)};
 
             // 🌟 1. 차트가 잘리지 않게 크기와 위치를 동적으로 조절
-            int diameter = Math.min(210, getHeight() - 110); 
+            int diameter = Math.min(200, getHeight() - 110); 
             int x = (getWidth() - diameter) / 2; // 가로 중앙 정렬
             int y = 20; // 위쪽 여백
             
@@ -1257,13 +1304,18 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fillOval(innerX, innerY, innerDiameter, innerDiameter);
 
-            // 🎯 3. 도넛 정중앙에 1위 카테고리 이름 텍스트 박기
+         // 도넛 중앙에 "대분류" 표시
+            String centerTitle = "대분류";
+
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+
             FontMetrics fm = g2.getFontMetrics();
-            int textX = x + (diameter - fm.stringWidth(maxCategory)) / 2;
+
+            int textX = x + (diameter - fm.stringWidth(centerTitle)) / 2;
             int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent();
-            g2.drawString(maxCategory, textX, textY);
+
+            g2.drawString(centerTitle, textX, textY);
 
             // 🎨 4. 하단 범례(Legend) 줄맞춤 및 잘림 방지 (2열 배치)
             int legendTop = y + diameter + 25; // 차트와 텍스트 사이 여백 확보
@@ -1414,7 +1466,7 @@ public class GeojiTalchulApp extends JFrame {
             });
             p.add(new JScrollPane(list),BorderLayout.CENTER);
 
-            JLabel mine = new JLabel("  내 순위  🏅 17위    목표 700,000원   /   현재 650,000원");
+            JLabel mine = new JLabel("  내 순위  17위    목표 700,000원   /   현재 650,000원");
             mine.setOpaque(true); mine.setBackground(GREEN_PALE);
             mine.setBorder(new EmptyBorder(16,16,16,16));
             mine.setFont(FONT_BOLD);
@@ -1469,7 +1521,7 @@ public class GeojiTalchulApp extends JFrame {
             p.add(new JLabel("보상 포인트")); p.add(reward);
             int r=JOptionPane.showConfirmDialog(this,p,"그룹 챌린지 생성",JOptionPane.OK_CANCEL_OPTION);
             if(r==JOptionPane.OK_OPTION){
-                challengeModel.addElement("👥 "+name.getText()+"   | 목표 "+goal.getText()+"원 | 보상 "+reward.getText()+"P | 참여 1명");
+                challengeModel.addElement(" "+name.getText()+"   | 목표 "+goal.getText()+"원 | 보상 "+reward.getText()+"P | 참여 1명");
                 state.points += 50;
                 refreshAll();
             }
@@ -1506,18 +1558,14 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- MY / STORE ----------
     class MyStorePanel extends JPanel {
-        JTabbedPane tabs = new JTabbedPane();
         JLabel myPoints = new JLabel();
-        JPanel fixedList = new JPanel();
 
         MyStorePanel() {
             setLayout(new BorderLayout());
             setBackground(BG);
             setBorder(new EmptyBorder(28,28,28,28));
-            tabs.addTab("포인트 상점", buildStore());
-            tabs.addTab("고정지출 관리", buildFixed());
-            tabs.addTab("내 정보 / 설정", buildMyInfo());
-            add(tabs,BorderLayout.CENTER);
+
+            add(buildStore(), BorderLayout.CENTER);
         }
 
         JPanel buildStore() {
@@ -1547,112 +1595,58 @@ public class GeojiTalchulApp extends JFrame {
         void addShopItem(JPanel parent,String icon,String name,String price,int cost){
             JPanel c=roundedPanel(new Color(249,250,251),14);
             c.setLayout(new BoxLayout(c,BoxLayout.Y_AXIS));
-            JLabel i=new JLabel(icon,SwingConstants.CENTER); i.setFont(new Font("Malgun Gothic",Font.PLAIN,30));
-            JLabel n=new JLabel(name); n.setFont(FONT_BOLD);
-            JLabel pr=new JLabel(price); pr.setForeground(GREEN_DARK);
+
+            JLabel i=new JLabel(icon,SwingConstants.CENTER);
+            i.setFont(new Font("Malgun Gothic",Font.PLAIN,30));
+
+            JLabel n=new JLabel(name);
+            n.setFont(FONT_BOLD);
+
+            JLabel pr=new JLabel(price);
+            pr.setForeground(GREEN_DARK);
+
             JButton buy=primaryButton("교환");
             buy.setAlignmentX(Component.CENTER_ALIGNMENT);
+
             buy.addActionListener(e->{
                 if(state.points>=cost){
                     state.points-=cost;
                     refreshAll();
-                    JOptionPane.showMessageDialog(this,name+" 교환 완료!","포인트 상점",JOptionPane.INFORMATION_MESSAGE);
+
+                    JOptionPane.showMessageDialog(
+                        this,
+                        name+" 교환 완료!",
+                        "포인트 상점",
+                        JOptionPane.INFORMATION_MESSAGE
+                    );
                 }else{
-                    JOptionPane.showMessageDialog(this,"포인트가 부족합니다.","포인트 상점",JOptionPane.WARNING_MESSAGE);
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "포인트가 부족합니다.",
+                        "포인트 상점",
+                        JOptionPane.WARNING_MESSAGE
+                    );
                 }
             });
-            i.setAlignmentX(Component.CENTER_ALIGNMENT); n.setAlignmentX(Component.CENTER_ALIGNMENT); pr.setAlignmentX(Component.CENTER_ALIGNMENT);
-            c.add(Box.createVerticalGlue()); c.add(i); c.add(Box.createVerticalStrut(8)); c.add(n); c.add(pr);
-            c.add(Box.createVerticalStrut(8)); c.add(buy); c.add(Box.createVerticalGlue());
+
+            i.setAlignmentX(Component.CENTER_ALIGNMENT);
+            n.setAlignmentX(Component.CENTER_ALIGNMENT);
+            pr.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            c.add(Box.createVerticalGlue());
+            c.add(i);
+            c.add(Box.createVerticalStrut(8));
+            c.add(n);
+            c.add(pr);
+            c.add(Box.createVerticalStrut(8));
+            c.add(buy);
+            c.add(Box.createVerticalGlue());
+
             parent.add(c);
-        }
-
-        JPanel buildFixed() {
-            JPanel p=roundedPanel(WHITE,18);
-            p.setLayout(new BorderLayout(12,12));
-            JPanel head=new JPanel(new BorderLayout());
-            head.setOpaque(false);
-            JPanel t=new JPanel();
-            t.setOpaque(false); t.setLayout(new BoxLayout(t,BoxLayout.Y_AXIS));
-            JLabel title=new JLabel("고정지출 관리");
-            title.setFont(FONT_TITLE);
-            JLabel desc=new JLabel("최근 3개월 동안 같은 금액 + 같은 중분류가 반복된 항목을 자동 후보로 제안합니다.");
-            desc.setForeground(MUTED);
-            t.add(title); t.add(Box.createVerticalStrut(5)); t.add(desc);
-            head.add(t,BorderLayout.WEST);
-            JButton auto=flatButton("자동 후보 새로고침");
-            auto.addActionListener(e->refreshFixedList());
-            head.add(auto,BorderLayout.EAST);
-            p.add(head,BorderLayout.NORTH);
-
-            fixedList.setBackground(WHITE);
-            fixedList.setLayout(new BoxLayout(fixedList,BoxLayout.Y_AXIS));
-            JScrollPane sp=new JScrollPane(fixedList);
-            sp.setBorder(BorderFactory.createEmptyBorder());
-            p.add(sp,BorderLayout.CENTER);
-
-            JPanel bottom=new JPanel(new BorderLayout());
-            bottom.setBackground(GREEN_PALE);
-            JLabel note=new JLabel("  ☑ 체크한 항목만 이번 달 고정지출 계산에 포함됩니다.");
-            note.setBorder(new EmptyBorder(12,5,12,5));
-            bottom.add(note,BorderLayout.CENTER);
-            JButton save=primaryButton("설정 저장");
-            save.addActionListener(e->{
-                state.points += 20;
-                refreshAll();
-                JOptionPane.showMessageDialog(this,"고정지출 설정을 저장했습니다. +20P","저장 완료",JOptionPane.INFORMATION_MESSAGE);
-            });
-            bottom.add(save,BorderLayout.EAST);
-            p.add(bottom,BorderLayout.SOUTH);
-            return p;
-        }
-
-        JPanel buildMyInfo() {
-            JPanel p=roundedPanel(WHITE,18);
-            p.setLayout(new GridBagLayout());
-            GridBagConstraints g=new GridBagConstraints();
-            g.insets=new Insets(10,10,10,10);
-            g.fill=GridBagConstraints.HORIZONTAL;
-            addInfo(p,g,0,"회원 이름","프로거지");
-            addInfo(p,g,1,"월 예산",String.valueOf(state.budget));
-            addInfo(p,g,2,"예산 경고 기준","80%");
-            addInfo(p,g,3,"기본 시작일","1일");
-            addInfo(p,g,4,"포인트",""+state.points+" P");
-            return p;
-        }
-
-        void addInfo(JPanel p,GridBagConstraints g,int row,String k,String v){
-            g.gridx=0; g.gridy=row; g.weightx=0.2; p.add(new JLabel(k),g);
-            JTextField f=new JTextField(v); g.gridx=1; g.weightx=0.8; p.add(f,g);
-        }
-
-        void refreshFixedList() {
-            fixedList.removeAll();
-            List<Expense> candidates=state.fixedCandidates();
-            Set<Integer> selected=state.fixedExpenseIds;
-            for(Expense e:candidates){
-                JCheckBox cb=new JCheckBox("<html><b>"+esc(e.item)+"</b>  "+won(e.amount)+"<br><font color='#71808F'>"+
-                        esc(e.medium)+" · 최근 반복 지출 후보</font></html>", selected.contains(e.id));
-                cb.setBackground(WHITE);
-                cb.setBorder(new CompoundBorder(new MatteBorder(0,0,1,0,BORDER),
-                        new EmptyBorder(10,10,10,10)));
-                cb.setAlignmentX(Component.LEFT_ALIGNMENT);
-                cb.addActionListener(x->{
-                    if(cb.isSelected()) selected.add(e.id); else selected.remove(e.id);
-                });
-                fixedList.add(cb);
-            }
-            if(candidates.isEmpty()){
-                JLabel empty=new JLabel("자동으로 발견된 고정지출 후보가 없습니다. 지출 데이터를 더 기록해 주세요.");
-                empty.setBorder(new EmptyBorder(20,20,20,20));
-                fixedList.add(empty);
-            }
-            fixedList.revalidate(); fixedList.repaint();
         }
 
         void refresh() {
             myPoints.setText("보유 포인트  " + state.points + " P");
-            refreshFixedList();
         }
     }
 
@@ -1967,4 +1961,6 @@ public class GeojiTalchulApp extends JFrame {
             new GeojiTalchulApp().setVisible(true);
         });
     }
+
+	JPanel list = new JPanel(new GridLayout(0, 2, 12, 12));
 }
