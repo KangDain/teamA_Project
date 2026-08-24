@@ -10,8 +10,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
 
 import com.formdev.flatlaf.FlatLightLaf;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 public class GeojiTalchulApp extends JFrame {
 
@@ -60,6 +65,9 @@ public class GeojiTalchulApp extends JFrame {
     JPanel loginPanel;
     JPanel signupPanel;
     JPanel mainShell;
+
+    // 🌟 로그인 세션 정보
+    int currentUserId = -1;
 
     public GeojiTalchulApp() {
         super("거지 탈출 - 계층형 지출 관리");
@@ -135,8 +143,49 @@ public class GeojiTalchulApp extends JFrame {
         loginBtn.setForeground(Color.WHITE); // 🌟 글자는 흰색으로 명확하게
         loginBtn.setBackground(new Color(41, 128, 185)); // 🌟 눈에 확 띄는 쨍한 파란색 계열 적용
         loginBtn.addActionListener(e -> {
-            // TODO: API 통신 로직 추가 필요 (지금은 바로 메인으로 이동)
-            ((CardLayout) rootContainer.getLayout()).show(rootContainer, "MAIN_APP");
+            String loginId = idField.getText().trim();
+            String password = new String(pwField.getPassword()).trim();
+
+            if (loginId.isEmpty() || password.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "아이디와 비밀번호를 입력해 주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            loginBtn.setEnabled(false);
+            loginBtn.setText("로그인 중...");
+
+            new SwingWorker<JsonObject, Void>() {
+                @Override
+                protected JsonObject doInBackground() throws Exception {
+                    String body = "{\"loginId\":\"" + loginId + "\",\"password\":\"" + password + "\"}";
+                    return httpPost("http://localhost:8080/api/users/login", body);
+                }
+
+                @Override
+                protected void done() {
+                    loginBtn.setEnabled(true);
+                    loginBtn.setText("로그인");
+                    try {
+                        JsonObject res = get();
+                        if (res != null && res.has("userId")) {
+                            currentUserId = res.get("userId").getAsInt();
+                            String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
+                            userLabel.setText(userName + " 님");
+                            idField.setText("");
+                            pwField.setText("");
+                            ((CardLayout) rootContainer.getLayout()).show(rootContainer, "MAIN_APP");
+                            refreshAll();
+                        } else {
+                            String msg = (res != null && res.has("message")) ? res.get("message").getAsString() : "아이디 또는 비밀번호가 일치하지 않습니다.";
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this, msg, "로그인 실패", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(GeojiTalchulApp.this,
+                                "서버에 연결할 수 없습니다.\n서버가 실행 중인지 확인해 주세요.\n(" + ex.getMessage() + ")",
+                                "연결 오류", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         });
         
         JButton signupBtn = flatButton("회원가입 하기");
@@ -163,7 +212,7 @@ public class GeojiTalchulApp extends JFrame {
         title.setFont(FONT_TITLE);
         card.add(title, BorderLayout.NORTH);
 
-        // ERD 기반 입력 폼 (addFormRow 활용)
+        // ERD 기반 입력 폼 (필드를 변수로 선언해 나중에 값을 읽을 수 있도록)
         JPanel form = new JPanel(new GridBagLayout());
         form.setOpaque(false);
         GridBagConstraints g = new GridBagConstraints();
@@ -172,11 +221,20 @@ public class GeojiTalchulApp extends JFrame {
         g.weightx = 1;
 
         int r = 0;
-        addFormRow(form, g, r++, "아이디", new JTextField(15));
-        addFormRow(form, g, r++, "비밀번호", new JPasswordField(15));
-        addFormRow(form, g, r++, "이름", new JTextField(15));
-        addFormRow(form, g, r++, "생년월일(8자리)", new JTextField(15));
-        
+        JTextField signupIdField    = new JTextField(15);
+        JPasswordField signupPwField = new JPasswordField(15);
+        JTextField signupNameField  = new JTextField(15);
+        JTextField signupBirthField = new JTextField(15);
+        JTextField signupPhoneField = new JTextField(15);
+        JTextField signupJobField   = new JTextField(15);
+        JTextField signupAddrField  = new JTextField(15);
+        JTextField signupIncomeField= new JTextField(15);
+
+        addFormRow(form, g, r++, "아이디", signupIdField);
+        addFormRow(form, g, r++, "비밀번호", signupPwField);
+        addFormRow(form, g, r++, "이름", signupNameField);
+        addFormRow(form, g, r++, "생년월일(8자리)", signupBirthField);
+
         JPanel genderBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         genderBox.setOpaque(false);
         JRadioButton m = new JRadioButton("남성", true); m.setOpaque(false); m.setFont(FONT);
@@ -184,11 +242,11 @@ public class GeojiTalchulApp extends JFrame {
         ButtonGroup bg = new ButtonGroup(); bg.add(m); bg.add(f);
         genderBox.add(m); genderBox.add(f);
         addFormRow(form, g, r++, "성별", genderBox);
-        
-        addFormRow(form, g, r++, "전화번호", new JTextField(15));
-        addFormRow(form, g, r++, "직업", new JTextField(15));
-        addFormRow(form, g, r++, "주소", new JTextField(15));
-        addFormRow(form, g, r++, "월 수입(원)", new JTextField(15));
+
+        addFormRow(form, g, r++, "전화번호", signupPhoneField);
+        addFormRow(form, g, r++, "직업", signupJobField);
+        addFormRow(form, g, r++, "주소", signupAddrField);
+        addFormRow(form, g, r++, "월 수입(원)", signupIncomeField);
 
         card.add(form, BorderLayout.CENTER);
 
@@ -196,16 +254,118 @@ public class GeojiTalchulApp extends JFrame {
         JPanel btnBox = new JPanel(new GridLayout(1, 2, 10, 0));
         btnBox.setOpaque(false);
         btnBox.setBorder(new EmptyBorder(20, 0, 0, 0));
-        
+
         JButton backBtn = flatButton("취소");
-        backBtn.addActionListener(e -> ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN"));
-        
-        JButton submitBtn = primaryButton("가입 완료");
-        submitBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(this, "회원가입 완료! (API 연동 필요)", "알림", JOptionPane.INFORMATION_MESSAGE);
+        backBtn.addActionListener(e -> {
+            // 입력 필드 초기화 후 로그인 화면으로
+            signupIdField.setText(""); signupPwField.setText("");
+            signupNameField.setText(""); signupBirthField.setText("");
+            signupPhoneField.setText(""); signupJobField.setText("");
+            signupAddrField.setText(""); signupIncomeField.setText("");
             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
         });
-        
+
+        JButton submitBtn = primaryButton("가입 완료");
+        submitBtn.addActionListener(e -> {
+            // 1. 입력값 수집
+            String loginId  = signupIdField.getText().trim();
+            String password = new String(signupPwField.getPassword()).trim();
+            String userName = signupNameField.getText().trim();
+            String birth    = signupBirthField.getText().trim();
+            String gender   = m.isSelected() ? "남" : "여";
+            String phone    = signupPhoneField.getText().trim();
+            String job      = signupJobField.getText().trim();
+            String addr     = signupAddrField.getText().trim();
+            String incomeStr= signupIncomeField.getText().trim();
+
+            // 2. 기본 유효성 검사
+            if (loginId.isEmpty() || password.isEmpty() || userName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "아이디, 비밀번호, 이름은 필수 입력 항목입니다.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            // 생년월일: 20020804(8자리) 또는 2002-08-04(yyyy-MM-dd) 모두 허용
+            String birthForApi = "";
+            if (!birth.isEmpty()) {
+                if (birth.matches("\\d{8}")) {
+                    // 8자리 숫자 → yyyy-MM-dd 변환
+                    birthForApi = birth.substring(0, 4) + "-" + birth.substring(4, 6) + "-" + birth.substring(6, 8);
+                } else if (birth.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    // 이미 yyyy-MM-dd 형식
+                    birthForApi = birth;
+                } else {
+                    JOptionPane.showMessageDialog(this, "생년월일 형식이 올바르지 않습니다.\n20020804 또는 2002-08-04 형식으로 입력해 주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+            final String finalBirth = birthForApi;
+
+            int income = 0;
+            if (!incomeStr.isEmpty()) {
+                try { income = Integer.parseInt(incomeStr.replace(",", "")); }
+                catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(this, "월 수입은 숫자로 입력해 주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            }
+
+            final int finalIncome = income;
+            submitBtn.setEnabled(false);
+            submitBtn.setText("처리 중...");
+
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    // 3. 아이디 중복 확인
+                    JsonObject dupRes = httpGet("http://localhost:8080/api/users/check-duplicate?loginId=" + URLEncoder.encode(loginId, "UTF-8"));
+                    if (dupRes != null && dupRes.has("duplicate") && dupRes.get("duplicate").getAsBoolean()) {
+                        return "이미 사용 중인 아이디입니다.";
+                    }
+
+                    // 4. 회원가입 API 호출
+                    JsonObject body = new JsonObject();
+                    body.addProperty("loginId", loginId);
+                    body.addProperty("password", password);
+                    body.addProperty("userName", userName);
+                    body.addProperty("birthDate", finalBirth);
+                    body.addProperty("gender", gender);
+                    body.addProperty("phone", phone);
+                    body.addProperty("job", job);
+                    body.addProperty("address", addr);
+                    body.addProperty("income", finalIncome);
+
+                    JsonObject res = httpPost("http://localhost:8080/api/users/register", body.toString());
+                    if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
+                        return null; // 성공
+                    }
+                    return (res != null && res.has("message")) ? res.get("message").getAsString() : "회원가입에 실패했습니다.";
+                }
+
+                @Override
+                protected void done() {
+                    submitBtn.setEnabled(true);
+                    submitBtn.setText("가입 완료");
+                    try {
+                        String errorMsg = get();
+                        if (errorMsg == null) {
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this, "회원가입이 완료되었습니다!\n로그인 화면으로 이동합니다.", "가입 성공", JOptionPane.INFORMATION_MESSAGE);
+                            // 입력 필드 초기화
+                            signupIdField.setText(""); signupPwField.setText("");
+                            signupNameField.setText(""); signupBirthField.setText("");
+                            signupPhoneField.setText(""); signupJobField.setText("");
+                            signupAddrField.setText(""); signupIncomeField.setText("");
+                            ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
+                        } else {
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this, errorMsg, "회원가입 실패", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(GeojiTalchulApp.this,
+                                "서버에 연결할 수 없습니다.\n서버가 실행 중인지 확인해 주세요.\n(" + ex.getMessage() + ")",
+                                "연결 오류", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
+        });
+
         btnBox.add(backBtn);
         btnBox.add(submitBtn);
         card.add(btnBox, BorderLayout.SOUTH);
@@ -213,6 +373,7 @@ public class GeojiTalchulApp extends JFrame {
         wrapper.add(card);
         return wrapper;
     }
+
 
     JPanel buildShell() {
         JPanel root = new JPanel(new BorderLayout());
@@ -2031,6 +2192,58 @@ public class GeojiTalchulApp extends JFrame {
         g.gridx=0;g.gridy=row;g.weightx=0.25;
         JLabel l=new JLabel(label);l.setFont(FONT_BOLD);p.add(l,g);
         g.gridx=1;g.weightx=0.75;p.add(c,g);
+    }
+
+    // ---------- HTTP 유틸리티 ----------
+    /** JSON Body를 POST하고 응답을 JsonObject로 반환. 오류 시 null 반환. */
+    JsonObject httpPost(String urlStr, String jsonBody) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setDoOutput(true);
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(jsonBody.getBytes(StandardCharsets.UTF_8));
+            }
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                return JsonParser.parseString(sb.toString()).getAsJsonObject();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    /** GET 요청을 보내고 응답을 JsonObject로 반환. 오류 시 null 반환. */
+    JsonObject httpGet(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                return JsonParser.parseString(sb.toString()).getAsJsonObject();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     static String won(long n){
