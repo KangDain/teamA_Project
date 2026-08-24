@@ -258,8 +258,16 @@ public class GeojiTalchulApp extends JFrame {
         user.setBackground(WHITE);
         user.setBorder(new CompoundBorder(new MatteBorder(1, 0, 0, 0, BORDER),
                 new EmptyBorder(14, 16, 14, 16)));
-        JLabel avatar = new JLabel("U", SwingConstants.CENTER);
+        // 기본 프로필인 거지 이미지로 적용
+        ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+        // 42x42 사이즈 칸에 들어가게 이미지 크기 36x36으로 축소
+        Image pImg = pIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+        JLabel avatar = new JLabel(new ImageIcon(pImg), SwingConstants.CENTER);
+        
         avatar.setOpaque(true);
+        avatar.setBackground(new Color(232, 237, 241));
+        avatar.setBorder(new CircleBorder(new Color(232,237,241), 28));
+        avatar.setPreferredSize(new Dimension(42, 42));
         avatar.setBackground(new Color(232, 237, 241));
         avatar.setForeground(MUTED);
         avatar.setBorder(new CircleBorder(new Color(232,237,241), 28));
@@ -290,9 +298,11 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     // 🌟 내 정보 수정 팝업창 (사진의 부드러운 테마 적용)
+    // 🌟 내 정보 수정 팝업창 (사진 변경 추가 & 크기 확장)
     void showUserInfoEditDialog() {
         JDialog dlg = new JDialog(this, "내 정보 수정", true);
-        dlg.setSize(420, 350);
+        // 🌟 항목이 늘어났으니 창 크기도 넉넉하게 키워줍니다! (글자 잘림 방지)
+        dlg.setSize(480, 450); 
         dlg.setLocationRelativeTo(this);
 
         // 팝업 배경도 우리의 감성적인 베이지색(BG)으로 통일
@@ -303,7 +313,7 @@ public class GeojiTalchulApp extends JFrame {
         // 둥근 알약 느낌의 하얀색 카드 패널
         JPanel card = roundedPanel(WHITE, 40); 
         card.setLayout(new GridBagLayout());
-        card.setBorder(new EmptyBorder(30, 20, 30, 20)); // 안쪽 여백 빵빵하게
+        card.setBorder(new EmptyBorder(25, 20, 25, 20)); // 안쪽 여백
         
         GridBagConstraints g = new GridBagConstraints();
         g.insets = new Insets(12, 10, 12, 10);
@@ -311,13 +321,35 @@ public class GeojiTalchulApp extends JFrame {
         g.weightx = 1;
 
         int r = 0;
-        // 기존 닉네임("프로거지 님"에서 " 님" 제거)을 기본값으로 세팅
+        
+        // 🌟 1. 프로필 사진 미리보기 & 변경 버튼 영역
+        JPanel profileBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        profileBox.setOpaque(false);
+        
+        // 거지 이미지 불러오기 (45x45 둥근 테두리 안에 쏙!)
+        ImageIcon currentIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+        Image currentImg = currentIcon.getImage().getScaledInstance(-1, 38, Image.SCALE_SMOOTH);
+        JLabel currentProfileImg = new JLabel(new ImageIcon(currentImg), SwingConstants.CENTER);
+        currentProfileImg.setPreferredSize(new Dimension(48, 48));
+        currentProfileImg.setBorder(new CircleBorder(BORDER, 48));
+        
+        JButton changePicBtn = flatButton("사진 변경");
+        changePicBtn.addActionListener(e -> {
+            JOptionPane.showMessageDialog(dlg, "프로필 사진 변경 기능은 갤러리 API 연동 후 지원됩니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
+        });
+        
+        profileBox.add(currentProfileImg);
+        profileBox.add(changePicBtn);
+        
+        // 🌟 2. 폼 항목들 순서대로 꽂아 넣기 (중복 방지!)
+        addFormRow(card, g, r++, "프로필", profileBox); 
         addFormRow(card, g, r++, "닉네임", new JTextField(userLabel.getText().replace(" 님", "")));
         addFormRow(card, g, r++, "기존 비밀번호", new JPasswordField());
         addFormRow(card, g, r++, "새 비밀번호", new JPasswordField());
         
         root.add(card, BorderLayout.CENTER);
 
+        // 🌟 3. 하단 취소 / 저장 버튼
         JPanel btnBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         btnBox.setOpaque(false);
         btnBox.setBorder(new EmptyBorder(15, 0, 0, 0));
@@ -744,20 +776,78 @@ public class GeojiTalchulApp extends JFrame {
 
             card.add(left, BorderLayout.WEST);
 
-            ImageIcon icon = new ImageIcon(
-                    getClass().getResource("/com/richman/ui/poorman.png")
-            );
+            // 🌟 [수정] 우측 캐릭터 및 말풍선 영역 생성
+            JPanel rightBox = new JPanel(new BorderLayout());
+            rightBox.setOpaque(false);
+            rightBox.setPreferredSize(new Dimension(240, 235));
 
-            // 이미지 크기 조절
-            Image image = icon.getImage().getScaledInstance(
-                    160, 160, Image.SCALE_SMOOTH
-            );
+            // 🌟 1. 말풍선 둥근 패널 만들기 (기본 상태는 숨김)
+            JPanel bubblePanel = new RoundedPanel(WHITE, 30);
+            bubblePanel.setLayout(new BorderLayout());
+            bubblePanel.setBorder(new EmptyBorder(10, 18, 10, 18)); // 말풍선 안쪽 빵빵한 여백
+            JLabel bubbleText = new JLabel("...");
+            bubbleText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            bubbleText.setForeground(TEXT);
+            bubbleText.setHorizontalAlignment(SwingConstants.CENTER);
+            bubblePanel.add(bubbleText, BorderLayout.CENTER);
+            bubblePanel.setVisible(false);
 
+            // 🌟 [수정된 부분] 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
+            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
+            bubbleWrapper.setOpaque(false);
+            // 🌟 이 줄을 추가해서 말풍선이 숨겨져 있어도 무조건 높이 60px의 빈 공간을 유지하게 만듭니다.
+            bubbleWrapper.setPreferredSize(new Dimension(240, 60)); 
+            bubbleWrapper.add(bubblePanel);
+            rightBox.add(bubbleWrapper, BorderLayout.NORTH);
+
+            // 🌟 2. 쭈구리 거지 이미지 
+            ImageIcon icon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+            // 말풍선 들어갈 자리를 확보하기 위해 이미지 사이즈를 160 -> 140으로 살짝 다이어트시켰습니다.
+            Image image = icon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH); 
             JLabel character = new JLabel(new ImageIcon(image));
             character.setHorizontalAlignment(SwingConstants.CENTER);
-            character.setPreferredSize(new Dimension(220, 180));
+            
+            // 마우스 올리면 손가락 모양으로 짠!
+            character.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-            card.add(character, BorderLayout.EAST);
+            // 🌟 3. 거지 찰진 랜덤 대사 목록
+            String[] quotes = {
+                "오늘 점심은 삼각김밥이다...",
+                "문성도원",
+                "피들스정",
+                "숨만 쉬어도 돈이 나가네...",
+                "노르톨트 후버",
+                "이러다간 진짜 길바닥 나앉아!"
+            };
+
+            // 말풍선 사라지는 타이머를 담을 변수
+            final javax.swing.Timer[] hideTimer = {null};
+
+            // 🌟 4. 캐릭터 클릭 시 대사 띄우기!
+            character.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    // 랜덤으로 멘트 뽑아서 말풍선에 꽂기
+                    int r = (int)(Math.random() * quotes.length);
+                    bubbleText.setText(quotes[r]);
+                    bubblePanel.setVisible(true); // 말풍선 뿅!
+                    
+                    // 폭풍 광클(연타) 시 기존 타이머 끄고 새로 2.5초 리셋
+                    if (hideTimer[0] != null && hideTimer[0].isRunning()) {
+                        hideTimer[0].stop(); 
+                    }
+                    
+                    hideTimer[0] = new javax.swing.Timer(2500, evt -> {
+                        bubblePanel.setVisible(false); // 2.5초 뒤 스르륵 숨김
+                    });
+                    hideTimer[0].setRepeats(false); // 한 번만 실행
+                    hideTimer[0].start();
+                }
+            });
+
+            rightBox.add(character, BorderLayout.CENTER);
+            card.add(rightBox, BorderLayout.EAST);
+
             return card;
         }
 
@@ -859,7 +949,7 @@ public class GeojiTalchulApp extends JFrame {
             // 고정지출 후보 알림을 확인한 뒤에는 홈 배경색과 동일하게 만들어 눈에 띄지 않게 처리
             if (alertBanner != null) {
                 boolean visibleAlert = activeBudgetAlert || activeFixedAlert;
-                alertBanner.setBackground(visibleAlert ? RED : BG);
+                alertBanner.setVisible(visibleAlert);
                 alertLabel.setForeground(visibleAlert ? WHITE : BG);
                 Component east = alertBanner.getComponentCount() > 1 ? alertBanner.getComponent(1) : null;
                 if (east instanceof JButton) {
@@ -1256,11 +1346,66 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class PieChart extends JPanel {
-        PieChart() { setPreferredSize(new Dimension(400, 300)); setBackground(WHITE); }
+        // 🌟 마우스 호버 상태를 저장할 변수들
+        String hoveredCategory = null;
+        List<SliceInfo> slices = new ArrayList<>();
+        java.awt.geom.Ellipse2D.Double innerHole = null;
+
+        // 각 파이 조각의 영역(도형)과 카테고리 이름을 묶어둘 클래스
+        class SliceInfo {
+            Shape arc;
+            String category;
+            SliceInfo(Shape arc, String category) {
+                this.arc = arc;
+                this.category = category;
+            }
+        }
+
+        PieChart() { 
+            setPreferredSize(new Dimension(400, 300)); 
+            setBackground(WHITE); 
+            
+            // 마우스 움직임 감지 리스너
+            addMouseMotionListener(new MouseMotionAdapter() {
+                @Override
+                public void mouseMoved(MouseEvent e) {
+                    String found = null;
+                    Point p = e.getPoint();
+                    
+                    if (innerHole != null && !innerHole.contains(p)) {
+                        for (SliceInfo info : slices) {
+                            if (info.arc.contains(p)) {
+                                found = info.category;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!Objects.equals(found, hoveredCategory)) {
+                        hoveredCategory = found;
+                        repaint();
+                    }
+                }
+            });
+
+            // 마우스가 차트 밖으로 나가면 호버 상태 초기화
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    if (hoveredCategory != null) {
+                        hoveredCategory = null;
+                        repaint();
+                    }
+                }
+            });
+        }
+        
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2 = (Graphics2D)g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            slices.clear(); 
 
             Map<String,Long> map = state.largeTotals();
             long total = map.values().stream().mapToLong(Long::longValue).sum();
@@ -1273,70 +1418,81 @@ public class GeojiTalchulApp extends JFrame {
 
             Color[] colors = {GREEN, BLUE, ORANGE, PURPLE, new Color(90,150,130), new Color(205,128,120), new Color(150,150,95)};
 
-            // 🌟 1. 차트가 잘리지 않게 크기와 위치를 동적으로 조절
             int diameter = Math.min(200, getHeight() - 110); 
-            int x = (getWidth() - diameter) / 2; // 가로 중앙 정렬
-            int y = 20; // 위쪽 여백
+            int x = (getWidth() - diameter) / 2;
+            int y = 20; 
             
             double start = 0;
             int i = 0;
+            
+            // 🌟 지출 1위 카테고리를 찾기 위한 변수 추가
             String maxCategory = "";
             long maxVal = -1;
             
-            // 파이 조각 그리기 & 가장 높은 비율 찾기
             for (Map.Entry<String,Long> en : map.entrySet()) {
                 double angle = 360.0 * en.getValue() / total;
+                Arc2D.Double arc = new Arc2D.Double(x, y, diameter, diameter, start, angle, Arc2D.PIE);
+                
                 g2.setColor(colors[i++ % colors.length]);
-                g2.fill(new Arc2D.Double(x, y, diameter, diameter, start, angle, Arc2D.PIE));
+                g2.fill(arc);
+                
+                slices.add(new SliceInfo(arc, en.getKey()));
                 start += angle;
                 
+                // 🌟 파이 조각을 그리면서 최댓값과 그 카테고리 이름 저장!
                 if (en.getValue() > maxVal) {
                     maxVal = en.getValue();
                     maxCategory = en.getKey();
                 }
             }
 
-            // 🍩 2. 도넛 모양 만들기 (가운데를 배경색으로 파내기)
-            int thickness = 25; // 도넛 두께
+            int thickness = 25; 
             int innerDiameter = diameter - (thickness * 2);
             int innerX = x + thickness;
             int innerY = y + thickness;
+            
+            innerHole = new java.awt.geom.Ellipse2D.Double(innerX, innerY, innerDiameter, innerDiameter);
             g2.setColor(WHITE);
-            g2.fillOval(innerX, innerY, innerDiameter, innerDiameter);
+            g2.fill(innerHole);
 
-         // 도넛 중앙에 "대분류" 표시
-            String centerTitle = "대분류";
+            // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
+            String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
-
             FontMetrics fm = g2.getFontMetrics();
 
             int textX = x + (diameter - fm.stringWidth(centerTitle)) / 2;
             int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent();
-
             g2.drawString(centerTitle, textX, textY);
 
-            // 🎨 4. 하단 범례(Legend) 줄맞춤 및 잘림 방지 (2열 배치)
-            int legendTop = y + diameter + 25; // 차트와 텍스트 사이 여백 확보
-            int colWidth = getWidth() / 2; // 🌟 3열 -> 2열로 분할하여 긴 글자 겹침 완벽 방지
+            // 하단 범례(Legend) 2열 배치
+            int legendTop = y + diameter + 25; 
+            int colWidth = getWidth() / 2; 
             int row = 0, col = 0;
             i = 0;
             
             for (Map.Entry<String,Long> en : map.entrySet()) {
-                int lx = 40 + col * colWidth; // 셀 좌측 여백 넉넉하게
-                int ly = legendTop + row * 28; // 줄 간격 28px
+                int lx = 40 + col * colWidth; 
+                int ly = legendTop + row * 28; 
                 
                 g2.setColor(colors[i++ % colors.length]);
                 g2.fillRoundRect(lx, ly - 12, 14, 14, 4, 4);
                 
-                g2.setColor(TEXT);
-                g2.setFont(FONT);
+                // 마우스 호버 중인 항목은 범례 글씨 강조
+                if (en.getKey().equals(hoveredCategory)) {
+                    g2.setColor(GREEN_DARK);
+                    g2.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                } else {
+                    g2.setColor(TEXT);
+                    g2.setFont(FONT);
+                }
+                
                 int pct = (int)Math.round(en.getValue() * 100.0 / total);
                 g2.drawString(en.getKey() + " " + pct + "%", lx + 22, ly);
 
                 col++;
-                if (col >= 2) { // 🌟 2개 그려지면 다음 줄로 넘김
+                if (col >= 2) { 
                     col = 0;
                     row++;
                 }
