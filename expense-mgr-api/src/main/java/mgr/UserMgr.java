@@ -88,7 +88,7 @@ public class UserMgr {
         boolean flag = false;
         try {
             con = pool.getConnection();
-            String sql = "INSERT INTO user (login_id, password, user_name, birth_date, gender, phone, job, address, income, point_balance) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)";
+            String sql = "INSERT INTO user (login_id, password, user_name, birth_date, gender, phone, job, address, income, point_balance, profile_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)";
             pstmt = con.prepareStatement(sql);
             pstmt.setString(1, bean.getLoginId());
             pstmt.setString(2, bean.getPassword());
@@ -99,6 +99,7 @@ public class UserMgr {
             pstmt.setString(7, bean.getJob());
             pstmt.setString(8, bean.getAddress());
             pstmt.setInt(9, bean.getIncome());
+            pstmt.setString(10, bean.getProfileImage()); // NULL이면 null 저장 (선택 항목)
             if (pstmt.executeUpdate() == 1) flag = true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -107,6 +108,7 @@ public class UserMgr {
         }
         return flag;
     }
+
 
     public boolean updateUserInfo(UserBean bean) {
         Connection con = null;
@@ -182,6 +184,8 @@ public class UserMgr {
         bean.setAddress(rs.getString("address"));
         bean.setIncome(rs.getInt("income"));
         bean.setPointBalance(rs.getInt("point_balance"));
+        bean.setProfileImage(rs.getString("profile_image"));
         return bean;
     }
+
 }
