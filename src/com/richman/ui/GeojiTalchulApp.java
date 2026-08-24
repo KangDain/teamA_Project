@@ -229,6 +229,8 @@ public class GeojiTalchulApp extends JFrame {
         JTextField signupJobField   = new JTextField(15);
         JTextField signupAddrField  = new JTextField(15);
         JTextField signupIncomeField= new JTextField(15);
+        JTextField signupProfilePicField = new JTextField(15);
+        signupProfilePicField.setEditable(false);
 
         addFormRow(form, g, r++, "아이디", signupIdField);
         addFormRow(form, g, r++, "비밀번호", signupPwField);
@@ -248,6 +250,19 @@ public class GeojiTalchulApp extends JFrame {
         addFormRow(form, g, r++, "주소", signupAddrField);
         addFormRow(form, g, r++, "월 수입(원)", signupIncomeField);
 
+        JPanel profilePicBox = new JPanel(new BorderLayout(5, 0));
+        profilePicBox.setOpaque(false);
+        profilePicBox.add(signupProfilePicField, BorderLayout.CENTER);
+        JButton profilePicBtn = flatButton("사진 선택");
+        profilePicBtn.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+            if (chooser.showOpenDialog(GeojiTalchulApp.this) == JFileChooser.APPROVE_OPTION) {
+                signupProfilePicField.setText(chooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+        profilePicBox.add(profilePicBtn, BorderLayout.EAST);
+        addFormRow(form, g, r++, "프로필 사진", profilePicBox);
+
         card.add(form, BorderLayout.CENTER);
 
         // 하단 버튼 영역
@@ -262,6 +277,7 @@ public class GeojiTalchulApp extends JFrame {
             signupNameField.setText(""); signupBirthField.setText("");
             signupPhoneField.setText(""); signupJobField.setText("");
             signupAddrField.setText(""); signupIncomeField.setText("");
+            signupProfilePicField.setText("");
             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
         });
 
@@ -277,6 +293,7 @@ public class GeojiTalchulApp extends JFrame {
             String job      = signupJobField.getText().trim();
             String addr     = signupAddrField.getText().trim();
             String incomeStr= signupIncomeField.getText().trim();
+            String profilePic = signupProfilePicField.getText().trim();
 
             // 2. 기본 유효성 검사
             if (loginId.isEmpty() || password.isEmpty() || userName.isEmpty()) {
@@ -332,6 +349,9 @@ public class GeojiTalchulApp extends JFrame {
                     body.addProperty("job", job);
                     body.addProperty("address", addr);
                     body.addProperty("income", finalIncome);
+                    if (!profilePic.isEmpty()) {
+                        body.addProperty("profileImage", profilePic);
+                    }
 
                     JsonObject res = httpPost("http://localhost:8080/api/users/register", body.toString());
                     if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
@@ -353,6 +373,7 @@ public class GeojiTalchulApp extends JFrame {
                             signupNameField.setText(""); signupBirthField.setText("");
                             signupPhoneField.setText(""); signupJobField.setText("");
                             signupAddrField.setText(""); signupIncomeField.setText("");
+                            signupProfilePicField.setText("");
                             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
                         } else {
                             JOptionPane.showMessageDialog(GeojiTalchulApp.this, errorMsg, "회원가입 실패", JOptionPane.ERROR_MESSAGE);
@@ -1586,25 +1607,26 @@ public class GeojiTalchulApp extends JFrame {
             double start = 0;
             int i = 0;
             
-            // 🌟 지출 1위 카테고리를 찾기 위한 변수 추가
-            String maxCategory = "";
-            long maxVal = -1;
-            
+            double hoveredStart = 0;
+            double hoveredAngle = 0;
+            Color hoveredColor = null;
+
             for (Map.Entry<String,Long> en : map.entrySet()) {
                 double angle = 360.0 * en.getValue() / total;
                 Arc2D.Double arc = new Arc2D.Double(x, y, diameter, diameter, start, angle, Arc2D.PIE);
                 
-                g2.setColor(colors[i++ % colors.length]);
+                Color c = colors[i++ % colors.length];
+                g2.setColor(c);
                 g2.fill(arc);
+                
+                if (en.getKey().equals(hoveredCategory)) {
+                    hoveredStart = start;
+                    hoveredAngle = angle;
+                    hoveredColor = c;
+                }
                 
                 slices.add(new SliceInfo(arc, en.getKey()));
                 start += angle;
-                
-                // 🌟 파이 조각을 그리면서 최댓값과 그 카테고리 이름 저장!
-                if (en.getValue() > maxVal) {
-                    maxVal = en.getValue();
-                    maxCategory = en.getKey();
-                }
             }
 
             int thickness = 25; 
@@ -1616,8 +1638,8 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fill(innerHole);
 
-            // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
-            String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
+            // 🎯 중앙 텍스트는 항상 '대분류'로 고정
+            String centerTitle = "대분류";
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
@@ -1626,6 +1648,41 @@ public class GeojiTalchulApp extends JFrame {
             int textX = x + (diameter - fm.stringWidth(centerTitle)) / 2;
             int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent();
             g2.drawString(centerTitle, textX, textY);
+
+            // 호버된 요소에 선과 텍스트 그리기
+            if (hoveredCategory != null && hoveredColor != null) {
+                double midAngle = hoveredStart + hoveredAngle / 2.0;
+                double rad = Math.toRadians(-midAngle); // Arc2D is counter-clockwise
+                
+                int cx = x + diameter / 2;
+                int cy = y + diameter / 2;
+                
+                // 선 시작점 (파이 차트 외곽선에서 조금 바깥)
+                int lineStartX = cx + (int)(Math.cos(rad) * (diameter / 2 + 2));
+                int lineStartY = cy + (int)(Math.sin(rad) * (diameter / 2 + 2));
+                
+                // 선 끝점
+                int lineEndX = cx + (int)(Math.cos(rad) * (diameter / 2 + 15));
+                int lineEndY = cy + (int)(Math.sin(rad) * (diameter / 2 + 15));
+                
+                g2.setColor(hoveredColor);
+                g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g2.drawLine(lineStartX, lineStartY, lineEndX, lineEndY);
+                
+                // 텍스트 위치 계산
+                g2.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                FontMetrics sm = g2.getFontMetrics();
+                
+                int labelX;
+                if (Math.cos(rad) >= 0) {
+                    labelX = lineEndX + 5;
+                } else {
+                    labelX = lineEndX - sm.stringWidth(hoveredCategory) - 5;
+                }
+                int labelY = lineEndY + (sm.getAscent() / 2);
+                
+                g2.drawString(hoveredCategory, labelX, labelY);
+            }
 
             // 하단 범례(Legend) 2열 배치
             int legendTop = y + diameter + 25; 
