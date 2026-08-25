@@ -1496,7 +1496,27 @@ public class GeojiTalchulApp extends JFrame {
 
             JPanel top = new JPanel(new GridLayout(1,2,15,0));
             top.setOpaque(false);
-            top.add(chartCard("카테고리별 지출 비중", pie));
+            
+            JPanel pieCard = roundedPanel(WHITE, 18);
+            pieCard.setLayout(new BorderLayout());
+            JPanel pieHead = new JPanel(new BorderLayout());
+            pieHead.setOpaque(false);
+            pieHead.setBorder(new EmptyBorder(18,18,8,18));
+            JLabel pieTitle = new JLabel("카테고리별 지출 비중");
+            pieTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            pieHead.add(pieTitle, BorderLayout.WEST);
+            
+            JComboBox<String> pieCombo = new JComboBox<>(new String[]{"대분류", "중분류"});
+            pieCombo.setPreferredSize(new Dimension(100, 28));
+            pieCombo.addActionListener(e -> {
+                pie.setMode((String)pieCombo.getSelectedItem());
+                pie.repaint();
+            });
+            pieHead.add(pieCombo, BorderLayout.EAST);
+            pieCard.add(pieHead, BorderLayout.NORTH);
+            pieCard.add(pie, BorderLayout.CENTER);
+            
+            top.add(pieCard);
             top.add(chartCard("최근 6개월 지출 추이", trend));
             add(top, BorderLayout.NORTH);
 
@@ -1601,6 +1621,9 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class PieChart extends JPanel {
+        String mode = "대분류";
+        public void setMode(String mode) { this.mode = mode; }
+        
         // 🌟 마우스 호버 상태를 저장할 변수들
         String hoveredCategory = null;
         List<SliceInfo> slices = new ArrayList<>();
@@ -1662,7 +1685,7 @@ public class GeojiTalchulApp extends JFrame {
 
             slices.clear(); 
 
-            Map<String,Long> map = state.largeTotals();
+            Map<String,Long> map = mode.equals("대분류") ? state.largeTotals() : state.mediumTotals();
             long total = map.values().stream().mapToLong(Long::longValue).sum();
             if (total == 0) {
                 g2.setColor(MUTED);
@@ -1712,7 +1735,7 @@ public class GeojiTalchulApp extends JFrame {
             g2.fill(innerHole);
 
             // 🎯 중앙 텍스트는 항상 '대분류'로 고정
-            String centerTitle = "대분류";
+            String centerTitle = mode;
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
@@ -2399,6 +2422,11 @@ public class GeojiTalchulApp extends JFrame {
         Map<String,Long> largeTotals(){
             return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
                     .collect(Collectors.groupingBy(e->e.large,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
+        }
+
+        Map<String,Long> mediumTotals(){
+            return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
+                    .collect(Collectors.groupingBy(e->e.medium,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
         List<Expense> fixedCandidates(){
