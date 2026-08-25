@@ -1517,7 +1517,30 @@ public class GeojiTalchulApp extends JFrame {
             pieCard.add(pie, BorderLayout.CENTER);
             
             top.add(pieCard);
-            top.add(chartCard("최근 6개월 지출 추이", trend));
+            JPanel trendCard = roundedPanel(WHITE, 18);
+            trendCard.setLayout(new BorderLayout());
+            JPanel trendHead = new JPanel(new BorderLayout());
+            trendHead.setOpaque(false);
+            trendHead.setBorder(new EmptyBorder(18,18,8,18));
+            JLabel trendTitle = new JLabel("최근 지출 추이");
+            trendTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            trendHead.add(trendTitle, BorderLayout.WEST);
+            
+            JComboBox<String> trendCombo = new JComboBox<>(new String[]{"1개월", "6개월", "1년"});
+            trendCombo.setSelectedIndex(1);
+            trendCombo.setPreferredSize(new Dimension(100, 28));
+            trendCombo.addActionListener(e -> {
+                String sel = (String)trendCombo.getSelectedItem();
+                if (sel.equals("1개월")) trend.setMode(1);
+                else if (sel.equals("6개월")) trend.setMode(6);
+                else trend.setMode(12);
+                trend.repaint();
+            });
+            trendHead.add(trendCombo, BorderLayout.EAST);
+            trendCard.add(trendHead, BorderLayout.NORTH);
+            trendCard.add(trend, BorderLayout.CENTER);
+            
+            top.add(trendCard);
             add(top, BorderLayout.NORTH);
 
             JPanel detail = roundedPanel(WHITE, 18);
@@ -1816,6 +1839,9 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class TrendChart extends JPanel {
+        int mode = 6; // 1, 6, 12
+        public void setMode(int mode) { this.mode = mode; }
+
         TrendChart() { setPreferredSize(new Dimension(400, 230)); setBackground(WHITE); }
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -1830,31 +1856,79 @@ public class GeojiTalchulApp extends JFrame {
                 g2.drawLine(left,yy,left+w,yy);
             }
 
-            YearMonth now=YearMonth.of(2026,8);
-            long max=1;
-            long[] vals=new long[6];
-            for(int i=0;i<6;i++){
-                YearMonth ym=now.minusMonths(5-i);
-                vals[i]=state.expenses.stream().filter(e -> YearMonth.from(e.date).equals(ym)).mapToLong(e->e.amount).sum();
-                max=Math.max(max, vals[i]);
+            YearMonth now = YearMonth.of(2026, 8);
+            long max = 1;
+            int count = mode == 1 ? now.lengthOfMonth() : mode; // 1개월은 해당 월의 일수
+            long[] vals = new long[count];
+            
+            if (mode == 1) {
+                // 1개월 모드: 1일부터 월말까지 일별 지출
+                for(int i=0; i<count; i++){
+                    LocalDate d = now.atDay(i + 1);
+                    vals[i] = state.expenses.stream().filter(e -> e.date.equals(d)).mapToLong(e->e.amount).sum();
+                    max = Math.max(max, vals[i]);
+                }
+            } else {
+                // 6개월, 1년 모드: 월별 지출
+                for(int i=0; i<count; i++){
+                    YearMonth ym = now.minusMonths(count - 1 - i);
+                    vals[i] = state.expenses.stream().filter(e -> YearMonth.from(e.date).equals(ym)).mapToLong(e->e.amount).sum();
+                    max = Math.max(max, vals[i]);
+                }
             }
+
             g2.setColor(BLUE);
             g2.setStroke(new BasicStroke(3));
             int px=left, py=top+h-(int)(vals[0]*1.0/max*h);
-            for(int i=0;i<6;i++){
-                int xx=left+(w*i/5);
-                int yy=top+h-(int)(vals[i]*1.0/max*h);
-                if(i>0) g2.drawLine(px,py,xx,yy);
-                g2.fillOval(xx-4,yy-4,8,8);
-                g2.setColor(TEXT);
-                g2.setFont(new Font("Malgun Gothic",Font.PLAIN,11));
-                g2.drawString(now.minusMonths(5-i).getMonthValue()+"월",xx-8,top+h+22);
+            
+            for(int i=0; i<count; i++){
+                int xx = left + (w * i / Math.max(1, count - 1));
+                int yy = top + h - (int)(vals[i]*1.0/max*h);
+                if(i > 0) g2.drawLine(px, py, xx, yy);
+                
+                // 1개월 모드는 점을 작게, 나머지는 원래 크기로
+                if (mode == 1) {
+                    g2.fillOval(xx-2, yy-2, 4, 4);
+                } else {
+                    g2.fillOval(xx-4, yy-4, 8, 8);
+                }
+                
+                // 라벨 렌더링 (글자 겹침 방지 및 중앙 정렬)
+                String label = null;
+                if (mode == 1) {
+                    int day = i + 1;
+                    // 1개월 모드: 1일, 10일, 20일, 그리고 마지막 날(말일)만 깔끔하게 표시
+                    if (day == 1 || day == 10 || day == 20 || i == count - 1) {
+                        label = day + "일";
+                    }
+                } else if (mode == 12) {
+                    // 12개월 모드: 현재 월부터 역순으로 2개월씩 건너뛰어 표시 (겹침 완벽 방지)
+                    if ((count - 1 - i) % 2 == 0) {
+                        YearMonth ym = now.minusMonths(count - 1 - i);
+                        label = ym.getMonthValue() + "월";
+                    }
+                } else {
+                    // 6개월 모드: 간격이 넓어 모두 표시
+                    YearMonth ym = now.minusMonths(count - 1 - i);
+                    label = ym.getMonthValue() + "월";
+                }
+                
+                if (label != null) {
+                    g2.setColor(TEXT);
+                    g2.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(label);
+                    // 점(xx)을 기준으로 글자를 완벽히 가운데 정렬
+                    g2.drawString(label, xx - (textWidth / 2), top + h + 24);
+                }
+                
                 g2.setColor(BLUE);
-                px=xx; py=yy;
+                px = xx; py = yy;
             }
             g2.setColor(TEXT);
             g2.setFont(FONT_BOLD);
-            g2.drawString("최근 6개월", left, 18);
+            String titleStr = mode == 1 ? "이번 달 지출 추이" : (mode == 6 ? "최근 6개월 지출 추이" : "최근 1년 지출 추이");
+            g2.drawString(titleStr, left, 18);
             g2.dispose();
         }
     }
