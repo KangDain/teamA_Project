@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -171,6 +171,7 @@ hr.sep{border:none;border-top:2px solid var(--border);margin:36px 0;}
         <tr><td><code>userName</code></td><td>String</td><td>user_name</td><td>이름</td></tr>
         <tr><td><code>income</code></td><td>int</td><td>income</td><td>월 수입</td></tr>
         <tr><td><code>pointBalance</code></td><td>int</td><td>point_balance</td><td>보유 포인트 잔액</td></tr>
+        <tr><td><code>profileImage</code></td><td>String</td><td>profile_image</td><td>프로필 사진 (Base64 인코딩, 선택)</td></tr>
       </table>
     </div>
   </div>
@@ -300,7 +301,7 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
 
   <!-- 1. 회원 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-1. POST /api/users/login (로그인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "hong123", "password": "password123"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "phone": "010-1234-5678", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-2. POST /api/users/register (신규 회원가입)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "newuser", "password": "pw1234!@", "userName": "신규회원", "phone": "010-9999-8888", "income": 2000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "회원가입이 성공적으로 완료되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-2. POST /api/users/register (신규 회원가입)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "newuser", "password": "pw1234!@", "userName": "신규회원", "phone": "010-9999-8888", "income": 2000000, "profileImage": "iVBORw0KGgoAAAANSU..."}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "회원가입이 성공적으로 완료되었습니다."}</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-3. GET /api/users/check-duplicate?loginId=hong123 (아이디 중복확인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"loginId": "hong123", "duplicate": true, "message": "이미 사용 중인 아이디입니다."}</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-4. GET /api/users/1 (회원 상세정보 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-5. PUT /api/users/1 (회원정보 수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userName": "홍길동", "phone": "010-5555-7777", "income": 4000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "회원정보가 수정되었습니다."}</pre></div></div></div>

@@ -54,8 +54,10 @@ CREATE TABLE user (
     job           VARCHAR(50),
     address       VARCHAR(255),
     income        INT DEFAULT 0,
-    point_balance INT DEFAULT 0
+    point_balance INT DEFAULT 0,
+    profile_image MEDIUMTEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- [2] 대분류 카테고리 (large_category)
 CREATE TABLE large_category (

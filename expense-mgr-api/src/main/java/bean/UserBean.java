@@ -17,6 +17,8 @@ public class UserBean {
     private String address;
     private int income;
     private int pointBalance;
+    private String profileImage;
+
 
     public UserBean() {}
 
@@ -52,4 +54,8 @@ public class UserBean {
 
     public int getPointBalance() { return pointBalance; }
     public void setPointBalance(int pointBalance) { this.pointBalance = pointBalance; }
+
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 }
+
