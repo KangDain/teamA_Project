@@ -141,6 +141,9 @@ public class GeojiTalchulApp extends JFrame {
 
     // 🌟 로그인 세션 정보
     int currentUserId = -1;
+    
+    // 🌟 서버에서 받아올 내 프로필 사진을 저장해둘 전역 변수
+    Image currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
 
     public GeojiTalchulApp() {
         super("거지 탈출 - 계층형 지출 관리");
@@ -244,6 +247,24 @@ public class GeojiTalchulApp extends JFrame {
                             currentUserId = res.get("userId").getAsInt();
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
                             userLabel.setText(userName + " 님");
+                            
+                            // 🌟 [추가할 부분] 백엔드가 프로필 사진을 줬는지 검사!
+                            try {
+                                if (res.has("profileImage") && !res.get("profileImage").isJsonNull()) {
+                                    String base64 = res.get("profileImage").getAsString();
+                                    byte[] imgBytes = java.util.Base64.getDecoder().decode(base64);
+                                    currentUserProfileImage = new ImageIcon(imgBytes).getImage();
+                                } else {
+                                    // 아직 API 안 만들어졌거나 사진 등록 안 한 유저면 기본 거지 세팅
+                                    ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+                                    currentUserProfileImage = pIcon.getImage();
+                                }
+                            } catch (Exception imgEx) {
+                                // 이미지 변환 실패 시 안전하게 거지 세팅
+                                currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
+                            }
+                            // 🌟 ----------------------------------------------------
+
                             idField.setText("");
                             pwField.setText("");
                             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "MAIN_APP");
@@ -513,10 +534,8 @@ public class GeojiTalchulApp extends JFrame {
         user.setBackground(WHITE);
         user.setBorder(new CompoundBorder(new MatteBorder(1, 0, 0, 0, BORDER),
                 new EmptyBorder(14, 16, 14, 16)));
-        // 기본 프로필인 거지 이미지로 적용
         ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
-        // 42x42 사이즈 칸에 들어가게 이미지 크기 36x36으로 축소
-        Image pImg = pIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+        Image pImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
         JLabel avatar = new JLabel(new ImageIcon(pImg), SwingConstants.CENTER);
         
         avatar.setOpaque(true);
@@ -583,14 +602,73 @@ public class GeojiTalchulApp extends JFrame {
         
         // 거지 이미지 불러오기 (45x45 둥근 테두리 안에 쏙!)
         ImageIcon currentIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
-        Image currentImg = currentIcon.getImage().getScaledInstance(-1, 38, Image.SCALE_SMOOTH);
+        Image currentImg = currentUserProfileImage.getScaledInstance(-1, 38, Image.SCALE_SMOOTH);
         JLabel currentProfileImg = new JLabel(new ImageIcon(currentImg), SwingConstants.CENTER);
         currentProfileImg.setPreferredSize(new Dimension(48, 48));
         currentProfileImg.setBorder(new CircleBorder(BORDER, 48));
         
         JButton changePicBtn = flatButton("사진 변경");
+        // 가짜 알림창 지우고, 진짜 갤러리 열어서 백엔드로 사진 쏘는 로직 장착
         changePicBtn.addActionListener(e -> {
-            JOptionPane.showMessageDialog(dlg, "프로필 사진 변경 기능은 갤러리 API 연동 후 지원됩니다.", "알림", JOptionPane.INFORMATION_MESSAGE);
+            // 파일 선택창(갤러리) 띄우기
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (JPG, PNG)", "jpg", "jpeg", "png"));
+            
+            int result = fileChooser.showOpenDialog(dlg);
+            
+            // 사용자가 사진을 선택했다면?
+            if (result == JFileChooser.APPROVE_OPTION) {
+                java.io.File selectedFile = fileChooser.getSelectedFile();
+                try {
+                    // 사진 파일을 컴퓨터가 읽을 수 있게 Base64(긴 텍스트)로 변환
+                    byte[] fileContent = java.nio.file.Files.readAllBytes(selectedFile.toPath());
+                    String encodedString = java.util.Base64.getEncoder().encodeToString(fileContent);
+
+                    // 백엔드로 보낼 JSON 데이터 포장 (내 아이디 + 사진 텍스트)
+                    JsonObject body = new JsonObject();
+                    body.addProperty("userId", currentUserId); // 현재 로그인한 유저 ID
+                    body.addProperty("profileImage", encodedString);
+
+                    // 버튼 연속 클릭 방지
+                    changePicBtn.setEnabled(false);
+                    changePicBtn.setText("업로드 중...");
+
+                    // 서버로
+                    new SwingWorker<JsonObject, Void>() {
+                        @Override
+                        protected JsonObject doInBackground() throws Exception {
+                            // 아까 뚫어둔 백엔드 API 주소로 POST 요청 날리기
+                            return httpPost("http://localhost:8080/api/profile", body.toString());
+                        }
+
+                        @Override
+                        protected void done() {
+                            changePicBtn.setEnabled(true);
+                            changePicBtn.setText("사진 변경");
+                            try {
+                                JsonObject res = get();
+                                if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
+                                    JOptionPane.showMessageDialog(dlg, "프로필 사진이 성공적으로 변경되었습니다!", "성공", JOptionPane.INFORMATION_MESSAGE);
+                                    
+                                    // 6. DB에 들어갔으니, 지금 화면에 보이는 둥근 아이콘도 새 사진으로 즉시 갱신!
+                                    ImageIcon newIcon = new ImageIcon(selectedFile.getAbsolutePath());
+                                    Image newImg = newIcon.getImage().getScaledInstance(-1, 38, Image.SCALE_SMOOTH);
+                                    currentProfileImg.setIcon(new ImageIcon(newImg));
+                                    
+                                } else {
+                                    String msg = (res != null && res.has("message")) ? res.get("message").getAsString() : "업로드 실패";
+                                    JOptionPane.showMessageDialog(dlg, msg, "실패", JOptionPane.ERROR_MESSAGE);
+                                }
+                            } catch (Exception ex) {
+                                JOptionPane.showMessageDialog(dlg, "서버 연결 오류: " + ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                            }
+                        }
+                    }.execute();
+                    
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(dlg, "파일을 읽는 중 오류가 발생했습니다.", "오류", JOptionPane.ERROR_MESSAGE);
+                }
+            }
         });
         
         profileBox.add(currentProfileImg);
