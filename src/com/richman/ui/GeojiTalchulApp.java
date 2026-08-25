@@ -10,6 +10,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.FontMetrics;
+import java.awt.Frame;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
@@ -20,6 +21,8 @@ import java.awt.Insets;
 import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.Shape;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
@@ -1999,12 +2002,30 @@ public class GeojiTalchulApp extends JFrame {
             centerPanel.setOpaque(false);
             centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
 
+            final ImageIcon[] selectedImage = {null};
+            final String[] selectedBase64 = {null}; // 추후 백엔드 연동용 Base64 데이터
+
             JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
             attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
             attachBtn.setBackground(new Color(245, 245, 245));
             attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
             attachBtn.setFocusPainted(false);
             attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            attachBtn.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
+                if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
+                        selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
+                        selectedImage[0] = new ImageIcon(bytes);
+                        attachBtn.setText("📷 " + chooser.getSelectedFile().getName() + " 첨부 완료!");
+                        attachBtn.setForeground(GREEN_DARK);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
 
             JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
             textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
@@ -2040,13 +2061,19 @@ public class GeojiTalchulApp extends JFrame {
             
             // 글 올리면 즉시 피드 맨 위에 카드 꽂아버리기!
             submitBtn.addActionListener(e -> {
-                String text = textArea.getText();
-                if(!text.trim().isEmpty() && !text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) {
-                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), text, 0, 0), 0);
+                String text = textArea.getText().trim();
+                boolean isDefaultText = text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!");
+                String postText = isDefaultText ? "" : text;
+                
+                // 내용이 있거나, 사진이 첨부되었거나 둘 중 하나면 통과!
+                if(!postText.isEmpty() || selectedImage[0] != null) {
+                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
                     feedContainer.add(Box.createVerticalStrut(20), 1);
                     state.points += 30;
                     refreshAll();
                     dialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "내용을 입력하거나 사진을 첨부해 주세요.", "작성 오류", JOptionPane.WARNING_MESSAGE);
                 }
             });
 
@@ -2072,20 +2099,21 @@ public class GeojiTalchulApp extends JFrame {
             
             // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
             if(feedContainer.getComponentCount() == 0){
-                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", 32, 8));
+                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", null, 32, 8));
                 feedContainer.add(Box.createVerticalStrut(20)); // 카드 사이 간격
-                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", 21, 4));
+                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", null, 21, 4));
             }
             feedContainer.revalidate();
             feedContainer.repaint();
         }
 
-        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드
-        private JPanel buildInstaCard(String author, String text, int likes, int comments) {
+        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드 (사진 유무 분기 처리)
+        private JPanel buildInstaCard(String author, String text, ImageIcon image, int likes, int comments) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
-            card.setMaximumSize(new Dimension(800, 380)); 
+            // 사진이 없으면 높이를 줄임
+            card.setMaximumSize(new Dimension(800, image != null ? 380 : 180)); 
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             header.setOpaque(false);
@@ -2095,14 +2123,6 @@ public class GeojiTalchulApp extends JFrame {
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             header.add(profilePic);
             header.add(nameLabel);
-
-            JPanel imageBox = new JPanel(new BorderLayout());
-            imageBox.setBackground(new Color(240, 240, 240));
-            imageBox.setPreferredSize(new Dimension(0, 200)); 
-            JLabel imgIcon = new JLabel("📷 사진이 들어갈 자리입니다", SwingConstants.CENTER);
-            imgIcon.setForeground(Color.GRAY);
-            imgIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-            imageBox.add(imgIcon, BorderLayout.CENTER);
 
             JPanel bottom = new JPanel(new BorderLayout(0, 8));
             bottom.setOpaque(false);
@@ -2127,8 +2147,23 @@ public class GeojiTalchulApp extends JFrame {
             bottom.add(contentArea, BorderLayout.CENTER);
 
             card.add(header, BorderLayout.NORTH);
-            card.add(imageBox, BorderLayout.CENTER);
-            card.add(bottom, BorderLayout.SOUTH);
+            
+            if (image != null) {
+                JPanel imageBox = new JPanel(new BorderLayout());
+                imageBox.setBackground(new Color(240, 240, 240));
+                imageBox.setPreferredSize(new Dimension(0, 200)); 
+                
+                // 이미지가 영역을 벗어나지 않게 리사이징
+                Image scaled = image.getImage().getScaledInstance(400, 200, Image.SCALE_SMOOTH);
+                JLabel imgIcon = new JLabel(new ImageIcon(scaled));
+                imageBox.add(imgIcon, BorderLayout.CENTER);
+                
+                card.add(imageBox, BorderLayout.CENTER);
+                card.add(bottom, BorderLayout.SOUTH);
+            } else {
+                // 사진이 없을 때는 bottom 패널을 CENTER에 두어 위로 끌어올림
+                card.add(bottom, BorderLayout.CENTER);
+            }
 
             return card;
         }
