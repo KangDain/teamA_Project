@@ -142,6 +142,7 @@ CREATE TABLE post (
     post_id    INT AUTO_INCREMENT PRIMARY KEY,
     user_id    INT NOT NULL,
     content    TEXT NOT NULL,
+    image_data LONGTEXT,
     like_count INT DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE

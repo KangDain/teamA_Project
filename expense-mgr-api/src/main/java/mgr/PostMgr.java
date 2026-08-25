@@ -27,6 +27,7 @@ public class PostMgr {
                 bean.setPostId(rs.getInt("post_id"));
                 bean.setUserId(rs.getInt("user_id"));
                 bean.setContent(rs.getString("content"));
+                bean.setImageData(rs.getString("image_data"));
                 bean.setLikeCount(rs.getInt("like_count"));
                 bean.setCreatedAt(rs.getTimestamp("created_at"));
                 vlist.add(bean);
@@ -45,10 +46,11 @@ public class PostMgr {
         boolean flag = false;
         try {
             con = pool.getConnection();
-            String sql = "INSERT INTO post (user_id, content, like_count) VALUES (?, ?, 0)";
+            String sql = "INSERT INTO post (user_id, content, image_data, like_count) VALUES (?, ?, ?, 0)";
             pstmt = con.prepareStatement(sql);
             pstmt.setInt(1, bean.getUserId());
             pstmt.setString(2, bean.getContent());
+            pstmt.setString(3, bean.getImageData());
             if (pstmt.executeUpdate() == 1) flag = true;
         } catch (Exception e) {
             e.printStackTrace();
