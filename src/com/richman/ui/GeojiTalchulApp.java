@@ -1710,8 +1710,10 @@ public class GeojiTalchulApp extends JFrame {
     class CommunityPanel extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         DefaultListModel<String> rankModel = new DefaultListModel<>();
-        DefaultListModel<String> feedModel = new DefaultListModel<>();
         DefaultListModel<String> challengeModel = new DefaultListModel<>();
+        
+        // 🌟 칙칙한 리스트(feedModel) 삭제하고, 카드를 세로로 쌓을 새로운 컨테이너 장착!
+        JPanel feedContainer = new JPanel();
 
         CommunityPanel() {
             setLayout(new BorderLayout());
@@ -1747,7 +1749,6 @@ public class GeojiTalchulApp extends JFrame {
             list.setFixedCellHeight(62);
             list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-            // 1위 금메달, 2위 은메달, 3위 동메달 배경색
             list.setCellRenderer(new DefaultListCellRenderer() {
                 @Override
                 public Component getListCellRendererComponent(
@@ -1758,15 +1759,14 @@ public class GeojiTalchulApp extends JFrame {
                     label.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
                     label.setBorder(new EmptyBorder(10, 18, 10, 18));
 
-                    // ... 기존 if-else 블록을 아래 코드로 교체 ...
                     if (index == 0) {
-                        label.setBackground(new Color(230, 240, 235)); // 연한 뮤트 그린
+                        label.setBackground(new Color(230, 240, 235));
                         label.setForeground(NAVY);
                     } else if (index == 1) {
-                        label.setBackground(new Color(240, 245, 248)); // 연한 뮤트 블루
+                        label.setBackground(new Color(240, 245, 248));
                         label.setForeground(NAVY);
                     } else if (index == 2) {
-                        label.setBackground(new Color(248, 245, 240)); // 연한 베이지
+                        label.setBackground(new Color(248, 245, 240));
                         label.setForeground(NAVY);
                     } else {
                         label.setBackground(WHITE);
@@ -1810,6 +1810,7 @@ public class GeojiTalchulApp extends JFrame {
             return p;
         }
 
+        // 🌟 1. 피드 화면을 인스타 갬성으로 변경!
         JPanel buildFeed() {
             JPanel p=roundedPanel(WHITE,18);
             p.setLayout(new BorderLayout(10,10));
@@ -1818,13 +1819,23 @@ public class GeojiTalchulApp extends JFrame {
             JLabel title=new JLabel("SNS 피드");
             title.setFont(FONT_TITLE);
             JButton write=primaryButton("+ 글쓰기");
-            write.addActionListener(e->writePost());
+            
+            // 🌟 촌스러운 글쓰기 창 대신, 새로 만든 팝업 연결!
+            write.addActionListener(e->showWritePostDialog()); 
+            
             head.add(title,BorderLayout.WEST); head.add(write,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);
-            JList<String> list=new JList<>(feedModel);
-            list.setFont(FONT);
-            list.setFixedCellHeight(105);
-            p.add(new JScrollPane(list),BorderLayout.CENTER);
+            
+            // 🌟 세로로 카드가 차곡차곡 쌓이도록 설정
+            feedContainer.setLayout(new BoxLayout(feedContainer, BoxLayout.Y_AXIS));
+            feedContainer.setBackground(WHITE);
+            feedContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+            JScrollPane scroll = new JScrollPane(feedContainer);
+            scroll.setBorder(null);
+            scroll.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 부드럽게!
+            
+            p.add(scroll,BorderLayout.CENTER);
             return p;
         }
 
@@ -1844,14 +1855,79 @@ public class GeojiTalchulApp extends JFrame {
             }
         }
 
-        void writePost() {
-            JTextArea area=new JTextArea(6,35);
-            int r=JOptionPane.showConfirmDialog(this,new JScrollPane(area),"게시물 작성",JOptionPane.OK_CANCEL_OPTION);
-            if(r==JOptionPane.OK_OPTION && !area.getText().trim().isEmpty()){
-                feedModel.add(0,"프로거지 님\n"+area.getText()+"\n\n♡ 좋아요 0     댓글 0     +30P");
-                state.points += 30;
-                refreshAll();
-            }
+        // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업!
+        private void showWritePostDialog() {
+            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "새 게시물 작성", true);
+            dialog.setSize(450, 420);
+            dialog.setLocationRelativeTo(this);
+            dialog.setLayout(new BorderLayout());
+            dialog.getContentPane().setBackground(WHITE);
+
+            JLabel title = new JLabel("새 게시물 만들기", SwingConstants.CENTER);
+            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            title.setBorder(new EmptyBorder(20, 0, 15, 0));
+            dialog.add(title, BorderLayout.NORTH);
+
+            JPanel centerPanel = new JPanel(new BorderLayout(0, 15));
+            centerPanel.setOpaque(false);
+            centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
+
+            JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
+            attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            attachBtn.setBackground(new Color(245, 245, 245));
+            attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
+            attachBtn.setFocusPainted(false);
+            attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
+            textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
+            textArea.setLineWrap(true);
+            textArea.addFocusListener(new FocusAdapter() {
+                public void focusGained(FocusEvent e) {
+                    if (textArea.getText().equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) textArea.setText("");
+                }
+            });
+            
+            JScrollPane scrollPane = new JScrollPane(textArea);
+            scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1));
+
+            centerPanel.add(attachBtn, BorderLayout.NORTH);
+            centerPanel.add(scrollPane, BorderLayout.CENTER);
+            dialog.add(centerPanel, BorderLayout.CENTER);
+
+            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            bottomPanel.setOpaque(false);
+            bottomPanel.setBorder(new EmptyBorder(10, 25, 20, 25));
+
+            JButton cancelBtn = new JButton("취소");
+            cancelBtn.setBackground(WHITE);
+            cancelBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            cancelBtn.addActionListener(e -> dialog.dispose());
+            
+            JButton submitBtn = new JButton("게시하기");
+            submitBtn.setBackground(GREEN_DARK); 
+            submitBtn.setForeground(WHITE);
+            submitBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            
+            // 글 올리면 즉시 피드 맨 위에 카드 꽂아버리기!
+            submitBtn.addActionListener(e -> {
+                String text = textArea.getText();
+                if(!text.trim().isEmpty() && !text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) {
+                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), text, 0, 0), 0);
+                    feedContainer.add(Box.createVerticalStrut(20), 1);
+                    state.points += 30;
+                    refreshAll();
+                    dialog.dispose();
+                }
+            });
+
+            bottomPanel.add(cancelBtn);
+            bottomPanel.add(submitBtn);
+            dialog.add(bottomPanel, BorderLayout.SOUTH);
+
+            dialog.setVisible(true);
         }
 
         void refresh() {
@@ -1866,10 +1942,68 @@ public class GeojiTalchulApp extends JFrame {
                 challengeModel.addElement(" 30만원 식비 줄이기 | 목표 300,000원 | 보상 1,000P | 5명 참여");
                 challengeModel.addElement(" 교통비 절약전 | 목표 100,000원 | 보상 500P | 8명 참여");
             }
-            if(feedModel.isEmpty()){
-                feedModel.addElement("프로거지 님\n이번 달 외식비를 20만원 아래로 줄여보겠습니다!\n\n♡ 좋아요 32     댓글 8     +30P");
-                feedModel.addElement("절약왕김씨\n고정지출을 정리하니까 생각보다 새는 돈이 많네요.\n\n♡ 좋아요 21     댓글 4     +30P");
+            
+            // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
+            if(feedContainer.getComponentCount() == 0){
+                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", 32, 8));
+                feedContainer.add(Box.createVerticalStrut(20)); // 카드 사이 간격
+                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", 21, 4));
             }
+            feedContainer.revalidate();
+            feedContainer.repaint();
+        }
+
+        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드
+        private JPanel buildInstaCard(String author, String text, int likes, int comments) {
+            JPanel card = new RoundedPanel(WHITE, 20); 
+            card.setLayout(new BorderLayout(0, 10));
+            card.setBorder(new EmptyBorder(15, 15, 15, 15));
+            card.setMaximumSize(new Dimension(800, 380)); 
+
+            JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+            header.setOpaque(false);
+            JLabel profilePic = new JLabel("😎"); 
+            profilePic.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+            JLabel nameLabel = new JLabel(author);
+            nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            header.add(profilePic);
+            header.add(nameLabel);
+
+            JPanel imageBox = new JPanel(new BorderLayout());
+            imageBox.setBackground(new Color(240, 240, 240));
+            imageBox.setPreferredSize(new Dimension(0, 200)); 
+            JLabel imgIcon = new JLabel("📷 사진이 들어갈 자리입니다", SwingConstants.CENTER);
+            imgIcon.setForeground(Color.GRAY);
+            imgIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            imageBox.add(imgIcon, BorderLayout.CENTER);
+
+            JPanel bottom = new JPanel(new BorderLayout(0, 8));
+            bottom.setOpaque(false);
+            
+            JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+            actions.setOpaque(false);
+            JLabel likeBtn = new JLabel("❤️ 좋아요 " + likes);
+            JLabel commentBtn = new JLabel("💬 댓글 " + comments);
+            likeBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            commentBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            actions.add(likeBtn);
+            actions.add(commentBtn);
+
+            JTextArea contentArea = new JTextArea(text);
+            contentArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            contentArea.setLineWrap(true);       
+            contentArea.setWrapStyleWord(true);
+            contentArea.setEditable(false);
+            contentArea.setOpaque(false);
+
+            bottom.add(actions, BorderLayout.NORTH);
+            bottom.add(contentArea, BorderLayout.CENTER);
+
+            card.add(header, BorderLayout.NORTH);
+            card.add(imageBox, BorderLayout.CENTER);
+            card.add(bottom, BorderLayout.SOUTH);
+
+            return card;
         }
     }
 
@@ -2330,6 +2464,4 @@ public class GeojiTalchulApp extends JFrame {
             new GeojiTalchulApp().setVisible(true);
         });
     }
-
-	JPanel list = new JPanel(new GridLayout(0, 2, 12, 12));
 }
