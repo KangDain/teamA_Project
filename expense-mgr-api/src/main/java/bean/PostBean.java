@@ -6,7 +6,6 @@ public class PostBean {
     private int postId;
     private int userId;
     private String content;
-    private String imageData;
     private int likeCount;
     private Timestamp createdAt;
 
@@ -20,9 +19,6 @@ public class PostBean {
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
-
-    public String getImageData() { return imageData; }
-    public void setImageData(String imageData) { this.imageData = imageData; }
 
     public int getLikeCount() { return likeCount; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }

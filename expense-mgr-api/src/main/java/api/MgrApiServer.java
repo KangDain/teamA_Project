@@ -31,6 +31,8 @@ public class MgrApiServer {
         server.createContext("/api/challenges", new ChallengeMgrHandler());
         server.createContext("/api/store", new StoreMgrHandler());
         server.createContext("/api/settings", new SettingMgrHandler());
+        // ProfileMgrHandler 
+        server.createContext("/api/profile", new ProfileMgrHandler());
 
         server.setExecutor(Executors.newFixedThreadPool(10));
         server.start();
