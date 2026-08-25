@@ -1,18 +1,88 @@
 package com.richman.ui;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Arc2D;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.io.*;
-import java.net.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+import javax.swing.border.AbstractBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.JsonObject;
@@ -963,10 +1033,9 @@ public class GeojiTalchulApp extends JFrame {
             rightBox.setOpaque(false);
             rightBox.setPreferredSize(new Dimension(240, 235));
 
-            // 🌟 1. 말풍선 둥근 패널 만들기 (기본 상태는 숨김)
-            JPanel bubblePanel = new RoundedPanel(WHITE, 30);
+            // 🌟 1. 말풍선 패널 만들기 (기본 상태는 숨김)
+            SpeechBubblePanel bubblePanel = new SpeechBubblePanel(WHITE, new Color(197, 222, 218), 22);
             bubblePanel.setLayout(new BorderLayout());
-            bubblePanel.setBorder(new EmptyBorder(10, 18, 10, 18)); // 말풍선 안쪽 빵빵한 여백
             JLabel bubbleText = new JLabel("...");
             bubbleText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
             bubbleText.setForeground(TEXT);
@@ -974,11 +1043,11 @@ public class GeojiTalchulApp extends JFrame {
             bubblePanel.add(bubbleText, BorderLayout.CENTER);
             bubblePanel.setVisible(false);
 
-            // 🌟 [수정된 부분] 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
-            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
+            // 🌟 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
+            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 8));
             bubbleWrapper.setOpaque(false);
-            // 🌟 이 줄을 추가해서 말풍선이 숨겨져 있어도 무조건 높이 60px의 빈 공간을 유지하게 만듭니다.
-            bubbleWrapper.setPreferredSize(new Dimension(240, 60)); 
+            // 꼬리 포함 높이 75px 빈 공간 유지
+            bubbleWrapper.setPreferredSize(new Dimension(240, 75));
             bubbleWrapper.add(bubblePanel);
             rightBox.add(bubbleWrapper, BorderLayout.NORTH);
 
@@ -999,7 +1068,8 @@ public class GeojiTalchulApp extends JFrame {
                 "피들스정",
                 "숨만 쉬어도 돈이 나가네...",
                 "노르톨트 후버",
-                "이러다간 진짜 길바닥 나앉아!"
+                "이러다간 진짜 길바닥 나앉아!",
+                "강팬치"
             };
 
             // 말풍선 사라지는 타이머를 담을 변수
@@ -2312,6 +2382,67 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     // ---------- Custom components ----------
+
+    // 🌟 말풍선 패널: 둥근 사각형(몸통) + 아래쪽 꼬리 삼각형
+    static class SpeechBubblePanel extends JPanel {
+        private static final int TAIL_H = 14; // 꼬리 높이
+        private static final int TAIL_W = 18; // 꼬리 너비
+        private final Color bubbleBg;
+        private final Color borderCol;
+        private final int radius;
+
+        SpeechBubblePanel(Color bg, Color border, int radius) {
+            this.bubbleBg  = bg;
+            this.borderCol = border;
+            this.radius    = radius;
+            setOpaque(false);
+            setBorder(new EmptyBorder(10, 18, 10 + TAIL_H, 18));
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            int w     = getWidth();
+            int h     = getHeight();
+            int bodyH = h - TAIL_H;
+            int cx    = w / 2;
+
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            // 1. 몸통 채우기
+            g2.setColor(bubbleBg);
+            g2.fillRoundRect(0, 0, w - 1, bodyH - 1, radius, radius);
+
+            // 2. 꼬리 채우기
+            int[] xs = { cx - TAIL_W / 2, cx + TAIL_W / 2, cx };
+            int[] ys = { bodyH - 1, bodyH - 1, h - 1 };
+            g2.fillPolygon(xs, ys, 3);
+
+            // 3. 몸통 테두리
+            g2.setColor(borderCol);
+            g2.setStroke(new BasicStroke(1.2f));
+            g2.drawRoundRect(0, 0, w - 1, bodyH - 1, radius, radius);
+
+            // 4. 꼬리 사선 테두리
+            g2.drawLine(cx - TAIL_W / 2, bodyH - 1, cx, h - 1);
+            g2.drawLine(cx + TAIL_W / 2, bodyH - 1, cx, h - 1);
+
+            // 5. 몸통-꼬리 이음새 자연스럽게 덮기
+            g2.setColor(bubbleBg);
+            g2.setStroke(new BasicStroke(2f));
+            g2.drawLine(cx - TAIL_W / 2 + 1, bodyH - 1, cx + TAIL_W / 2 - 1, bodyH - 1);
+
+            g2.dispose();
+            super.paintComponent(g);
+        }
+
+        @Override
+        public Dimension getPreferredSize() {
+            Dimension d = super.getPreferredSize();
+            return new Dimension(d.width, d.height + TAIL_H);
+        }
+    }
+
     static class RoundedPanel extends JPanel {
         int radius;
         RoundedPanel(Color bg, int radius){
