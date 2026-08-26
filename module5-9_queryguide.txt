@@ -48,21 +48,26 @@ SELECT point_id, point_type, point_amount, created_at FROM point_history WHERE u
 ==================================================
 
 [6-1] 게시글 작성
-INSERT INTO post (user_id, content) VALUES (?, ?);
+INSERT INTO post (user_id, content, image_data) VALUES (?, ?, ?);
 
-   순서   값         타입
-   1      user_id    int
-   2      content    String
+   순서   값            타입
+   1      user_id       int
+   2      content       String
+   3      image_data    String   (이미지를 Base64로 변환한 문자열, 없으면 null)
 
-   like_count는 기본값 0, created_at은 자동 기록이라 넣지 않음
+   like_count 기본 0, created_at 자동 기록이라 넣지 않음
+   사진 없는 게시글이면 image_data 자리에 null 전달
 
 
 [6-2] 게시글 수정
-UPDATE post SET content = ? WHERE post_id = ?;
+UPDATE post SET content = ?, image_data = ? WHERE post_id = ?;
 
-   순서   값         타입
-   1      content    String
-   2      post_id    int
+   순서   값            타입
+   1      content       String
+   2      image_data    String   (이미지를 Base64로 변환한 문자열)
+   3      post_id       int
+
+   사진을 안 바꾸면 기존 image_data 값을 그대로 다시 전달
 
 
 [6-3] 게시글 삭제
@@ -72,8 +77,8 @@ DELETE FROM post WHERE post_id = ?;
    1      post_id    int
 
 
-[6-4] 전체 피드 조회 (작성자명 포함, 최신순)
-SELECT p.post_id, p.user_id, u.user_name, p.content, p.like_count, p.created_at FROM post p JOIN user u ON p.user_id = u.user_id ORDER BY p.created_at DESC;
+[6-4] 전체 피드 조회 (작성자명 포함, 최신순, 피드에 이미지 포함)
+SELECT p.post_id, p.user_id, u.user_name, p.content, p.image_data, p.like_count, p.created_at FROM post p JOIN user u ON p.user_id = u.user_id ORDER BY p.created_at DESC;
 
    파라미터 없음
 
