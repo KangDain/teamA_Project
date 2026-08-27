@@ -3,6 +3,8 @@ package api.handler;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
+import mgr.UserMgr;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -24,11 +26,18 @@ public class ProfileMgrHandler implements HttpHandler {
                 
                 String base64Image = body.split("\"profileImage\"\\s*:\\s*\"")[1].split("\"")[0];
 
-                // TODO: 여기서 DB에 접속해서 해당 userId의 profile_image 컬럼을 base64Image로 업데이트!
-                System.out.println("유저 " + userId + "의 프로필 사진 업데이트 완료!");
+                                // UserMgr를 통해 프로필 사진 업데이트
+                UserMgr userMgr = new UserMgr();
+                boolean success = userMgr.updateProfileImage(userId, base64Image);
 
-                String responseJson = "{\"success\": true, \"message\": \"프로필 사진이 성공적으로 변경되었습니다.\"}";
-                sendRawResponse(exchange, 200, responseJson);
+                if (success) {
+                    System.out.println("유저 " + userId + "의 프로필 사진 업데이트 완료!");
+                    String responseJson = "{\"success\": true, \"message\": \"프로필 사진이 성공적으로 변경되었습니다.\"}";
+                    sendRawResponse(exchange, 200, responseJson);
+                } else {
+                    String responseJson = "{\"success\": false, \"message\": \"프로필 사진 변경에 실패했습니다.\"}";
+                    sendRawResponse(exchange, 500, responseJson);
+                }
 
             } else {
                 sendRawResponse(exchange, 405, "{\"message\":\"Method Not Allowed\"}");

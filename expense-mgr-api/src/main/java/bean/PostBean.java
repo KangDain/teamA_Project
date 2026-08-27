@@ -25,4 +25,13 @@ public class PostBean {
 
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+
+        private String imageData;
+    private boolean isLiked;
+
+    public String getImageData() { return imageData; }
+    public void setImageData(String imageData) { this.imageData = imageData; }
+
+    public boolean isLiked() { return isLiked; }
+    public void setLiked(boolean isLiked) { this.isLiked = isLiked; }
 }
