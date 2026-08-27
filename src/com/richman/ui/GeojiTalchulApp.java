@@ -1,13 +1,51 @@
 package com.richman.ui;
 
+<<<<<<< HEAD
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
+=======
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+>>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 import java.awt.geom.Arc2D;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
+<<<<<<< HEAD
 import java.util.*;
+=======
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+>>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 import java.util.List;
 import java.util.stream.Collectors;
 import java.io.*;
@@ -68,6 +106,9 @@ public class GeojiTalchulApp extends JFrame {
 
     // 🌟 로그인 세션 정보
     int currentUserId = -1;
+    
+    // 🌟 서버에서 받아올 내 프로필 사진을 저장해둘 전역 변수
+    Image currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
 
     // 🌟 서버에서 받아올 내 프로필 사진을 저장해둘 전역 변수
     // Image currentUserProfileImage = null;
@@ -106,6 +147,7 @@ public class GeojiTalchulApp extends JFrame {
         refreshAll();
     }
 
+<<<<<<< HEAD
     // 서버에서 내 지출 내역을 싹 긁어오는 메서드
     void loadMyExpensesFromServer() {
         new SwingWorker<JsonObject, Void>() {
@@ -144,6 +186,8 @@ public class GeojiTalchulApp extends JFrame {
         }.execute();
     }
     
+=======
+>>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG);
@@ -479,7 +523,6 @@ public class GeojiTalchulApp extends JFrame {
         user.setBackground(WHITE);
         user.setBorder(new CompoundBorder(new MatteBorder(1, 0, 0, 0, BORDER),
                 new EmptyBorder(14, 16, 14, 16)));
-        // 기본 프로필인 거지 이미지로 적용
         ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
         Image pImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
         JLabel avatar = new JLabel(new ImageIcon(pImg), SwingConstants.CENTER);
@@ -862,6 +905,7 @@ public class GeojiTalchulApp extends JFrame {
         JPanel recentList = new JPanel();
         PieChart homePie = new PieChart();
         JPanel alertBanner;
+        JLabel homeCharacter; // 🌟 스킨용 캐릭터 라벨 추가
 
         HomePanel() {
             setLayout(new BorderLayout(0, 20)); // 상단 알림 배너와 본문 사이의 여백 20px
@@ -1079,15 +1123,12 @@ public class GeojiTalchulApp extends JFrame {
             bubbleWrapper.add(bubblePanel);
             rightBox.add(bubbleWrapper, BorderLayout.NORTH);
 
-            // 🌟 2. 쭈구리 거지 이미지 
-            ImageIcon icon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
-            // 말풍선 들어갈 자리를 확보하기 위해 이미지 사이즈를 160 -> 140으로 살짝 다이어트시켰습니다.
-            Image image = icon.getImage().getScaledInstance(140, 140, Image.SCALE_SMOOTH); 
-            JLabel character = new JLabel(new ImageIcon(image));
-            character.setHorizontalAlignment(SwingConstants.CENTER);
-            
-            // 마우스 올리면 손가락 모양으로 짠!
-            character.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            // 🌟 2. 현재 선택된 스킨 이미지
+            homeCharacter = new JLabel();
+            homeCharacter.setHorizontalAlignment(SwingConstants.CENTER);
+            homeCharacter.setPreferredSize(new Dimension(140, 140));
+            homeCharacter.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            homeCharacter.setIcon(loadSkinIcon(state.currentSkin, 140, 140));
 
             // 🌟 3. 거지 찰진 랜덤 대사 목록
             String[] quotes = {
@@ -1103,9 +1144,16 @@ public class GeojiTalchulApp extends JFrame {
             final javax.swing.Timer[] hideTimer = {null};
 
             // 🌟 4. 캐릭터 클릭 시 대사 띄우기!
-            character.addMouseListener(new MouseAdapter() {
+            homeCharacter.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
+                    // 패딩 영역 클릭 방지
+                    int margin = 8;
+                    if (e.getX() < margin || e.getX() > homeCharacter.getWidth() - margin || e.getY() < margin
+                            || e.getY() > homeCharacter.getHeight() - margin) {
+                        return;
+                    }
+
                     // 랜덤으로 멘트 뽑아서 말풍선에 꽂기
                     int r = (int)(Math.random() * quotes.length);
                     bubbleText.setText(quotes[r]);
@@ -1124,7 +1172,18 @@ public class GeojiTalchulApp extends JFrame {
                 }
             });
 
-            rightBox.add(character, BorderLayout.CENTER);
+            rightBox.add(homeCharacter, BorderLayout.CENTER);
+
+            // 🌟 5. 사진 아래 스킨 설정 버튼
+            JButton skinButton = flatButton("스킨 설정");
+            skinButton.setForeground(GREEN_DARK);
+            skinButton.addActionListener(e -> showSkinSelectionDialog());
+            JPanel skinButtonBox = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            skinButtonBox.setOpaque(false);
+            skinButtonBox.setBorder(new EmptyBorder(0, 0, 4, 0));
+            skinButtonBox.add(skinButton);
+            rightBox.add(skinButtonBox, BorderLayout.SOUTH);
+
             card.add(rightBox, BorderLayout.EAST);
 
             return card;
@@ -1204,6 +1263,10 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void refresh() {
+            if (homeCharacter != null) {
+                homeCharacter.setIcon(loadSkinIcon(state.currentSkin, 140, 140));
+            }
+
             long spent = state.totalSpent();
             long remain = state.budget - spent;
             spentLabel.setText(won(spent));
@@ -1251,7 +1314,7 @@ public class GeojiTalchulApp extends JFrame {
         JPanel expenseRow(Expense e) {
             // 최근 지출 내역: 분류와 소분류를 두 줄로 표시
             // 예) 08.15 (토)   식비 > 배달음식
-            //                    버거킹
+            //                  버거킹
             JPanel row = new JPanel(new BorderLayout(15, 0));
             row.setBackground(WHITE);
             row.setBorder(new CompoundBorder(
@@ -1520,8 +1583,51 @@ public class GeojiTalchulApp extends JFrame {
 
             JPanel top = new JPanel(new GridLayout(1,2,15,0));
             top.setOpaque(false);
-            top.add(chartCard("카테고리별 지출 비중", pie));
-            top.add(chartCard("최근 6개월 지출 추이", trend));
+            
+            JPanel pieCard = roundedPanel(WHITE, 18);
+            pieCard.setLayout(new BorderLayout());
+            JPanel pieHead = new JPanel(new BorderLayout());
+            pieHead.setOpaque(false);
+            pieHead.setBorder(new EmptyBorder(18,18,8,18));
+            JLabel pieTitle = new JLabel("카테고리별 지출 비중");
+            pieTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            pieHead.add(pieTitle, BorderLayout.WEST);
+            
+            JComboBox<String> pieCombo = new JComboBox<>(new String[]{"대분류", "중분류"});
+            pieCombo.setPreferredSize(new Dimension(100, 28));
+            pieCombo.addActionListener(e -> {
+                pie.setMode((String)pieCombo.getSelectedItem());
+                pie.repaint();
+            });
+            pieHead.add(pieCombo, BorderLayout.EAST);
+            pieCard.add(pieHead, BorderLayout.NORTH);
+            pieCard.add(pie, BorderLayout.CENTER);
+            
+            top.add(pieCard);
+            JPanel trendCard = roundedPanel(WHITE, 18);
+            trendCard.setLayout(new BorderLayout());
+            JPanel trendHead = new JPanel(new BorderLayout());
+            trendHead.setOpaque(false);
+            trendHead.setBorder(new EmptyBorder(18,18,8,18));
+            JLabel trendTitle = new JLabel("최근 지출 추이");
+            trendTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            trendHead.add(trendTitle, BorderLayout.WEST);
+            
+            JComboBox<String> trendCombo = new JComboBox<>(new String[]{"1개월", "6개월", "1년"});
+            trendCombo.setSelectedIndex(1);
+            trendCombo.setPreferredSize(new Dimension(100, 28));
+            trendCombo.addActionListener(e -> {
+                String sel = (String)trendCombo.getSelectedItem();
+                if (sel.equals("1개월")) trend.setMode(1);
+                else if (sel.equals("6개월")) trend.setMode(6);
+                else trend.setMode(12);
+                trend.repaint();
+            });
+            trendHead.add(trendCombo, BorderLayout.EAST);
+            trendCard.add(trendHead, BorderLayout.NORTH);
+            trendCard.add(trend, BorderLayout.CENTER);
+            
+            top.add(trendCard);
             add(top, BorderLayout.NORTH);
 
             JPanel detail = roundedPanel(WHITE, 18);
@@ -1625,6 +1731,9 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class PieChart extends JPanel {
+        String mode = "대분류";
+        public void setMode(String mode) { this.mode = mode; }
+        
         // 🌟 마우스 호버 상태를 저장할 변수들
         String hoveredCategory = null;
         List<SliceInfo> slices = new ArrayList<>();
@@ -1686,7 +1795,7 @@ public class GeojiTalchulApp extends JFrame {
 
             slices.clear(); 
 
-            Map<String,Long> map = state.largeTotals();
+            Map<String,Long> map = mode.equals("대분류") ? state.largeTotals() : state.mediumTotals();
             long total = map.values().stream().mapToLong(Long::longValue).sum();
             if (total == 0) {
                 g2.setColor(MUTED);
@@ -1734,8 +1843,13 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fill(innerHole);
 
+<<<<<<< HEAD
             // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
             String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
+=======
+            // 🎯 중앙 텍스트는 항상 '대분류'로 고정
+            String centerTitle = mode;
+>>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
@@ -1781,6 +1895,9 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class TrendChart extends JPanel {
+        int mode = 6; // 1, 6, 12
+        public void setMode(int mode) { this.mode = mode; }
+
         TrendChart() { setPreferredSize(new Dimension(400, 230)); setBackground(WHITE); }
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -1795,31 +1912,79 @@ public class GeojiTalchulApp extends JFrame {
                 g2.drawLine(left,yy,left+w,yy);
             }
 
-            YearMonth now=YearMonth.of(2026,8);
-            long max=1;
-            long[] vals=new long[6];
-            for(int i=0;i<6;i++){
-                YearMonth ym=now.minusMonths(5-i);
-                vals[i]=state.expenses.stream().filter(e -> YearMonth.from(e.date).equals(ym)).mapToLong(e->e.amount).sum();
-                max=Math.max(max, vals[i]);
+            YearMonth now = YearMonth.of(2026, 8);
+            long max = 1;
+            int count = mode == 1 ? now.lengthOfMonth() : mode; // 1개월은 해당 월의 일수
+            long[] vals = new long[count];
+            
+            if (mode == 1) {
+                // 1개월 모드: 1일부터 월말까지 일별 지출
+                for(int i=0; i<count; i++){
+                    LocalDate d = now.atDay(i + 1);
+                    vals[i] = state.expenses.stream().filter(e -> e.date.equals(d)).mapToLong(e->e.amount).sum();
+                    max = Math.max(max, vals[i]);
+                }
+            } else {
+                // 6개월, 1년 모드: 월별 지출
+                for(int i=0; i<count; i++){
+                    YearMonth ym = now.minusMonths(count - 1 - i);
+                    vals[i] = state.expenses.stream().filter(e -> YearMonth.from(e.date).equals(ym)).mapToLong(e->e.amount).sum();
+                    max = Math.max(max, vals[i]);
+                }
             }
+
             g2.setColor(BLUE);
             g2.setStroke(new BasicStroke(3));
             int px=left, py=top+h-(int)(vals[0]*1.0/max*h);
-            for(int i=0;i<6;i++){
-                int xx=left+(w*i/5);
-                int yy=top+h-(int)(vals[i]*1.0/max*h);
-                if(i>0) g2.drawLine(px,py,xx,yy);
-                g2.fillOval(xx-4,yy-4,8,8);
-                g2.setColor(TEXT);
-                g2.setFont(new Font("Malgun Gothic",Font.PLAIN,11));
-                g2.drawString(now.minusMonths(5-i).getMonthValue()+"월",xx-8,top+h+22);
+            
+            for(int i=0; i<count; i++){
+                int xx = left + (w * i / Math.max(1, count - 1));
+                int yy = top + h - (int)(vals[i]*1.0/max*h);
+                if(i > 0) g2.drawLine(px, py, xx, yy);
+                
+                // 1개월 모드는 점을 작게, 나머지는 원래 크기로
+                if (mode == 1) {
+                    g2.fillOval(xx-2, yy-2, 4, 4);
+                } else {
+                    g2.fillOval(xx-4, yy-4, 8, 8);
+                }
+                
+                // 라벨 렌더링 (글자 겹침 방지 및 중앙 정렬)
+                String label = null;
+                if (mode == 1) {
+                    int day = i + 1;
+                    // 1개월 모드: 1일, 10일, 20일, 그리고 마지막 날(말일)만 깔끔하게 표시
+                    if (day == 1 || day == 10 || day == 20 || i == count - 1) {
+                        label = day + "일";
+                    }
+                } else if (mode == 12) {
+                    // 12개월 모드: 현재 월부터 역순으로 2개월씩 건너뛰어 표시 (겹침 완벽 방지)
+                    if ((count - 1 - i) % 2 == 0) {
+                        YearMonth ym = now.minusMonths(count - 1 - i);
+                        label = ym.getMonthValue() + "월";
+                    }
+                } else {
+                    // 6개월 모드: 간격이 넓어 모두 표시
+                    YearMonth ym = now.minusMonths(count - 1 - i);
+                    label = ym.getMonthValue() + "월";
+                }
+                
+                if (label != null) {
+                    g2.setColor(TEXT);
+                    g2.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(label);
+                    // 점(xx)을 기준으로 글자를 완벽히 가운데 정렬
+                    g2.drawString(label, xx - (textWidth / 2), top + h + 24);
+                }
+                
                 g2.setColor(BLUE);
-                px=xx; py=yy;
+                px = xx; py = yy;
             }
             g2.setColor(TEXT);
             g2.setFont(FONT_BOLD);
-            g2.drawString("최근 6개월", left, 18);
+            String titleStr = mode == 1 ? "이번 달 지출 추이" : (mode == 6 ? "최근 6개월 지출 추이" : "최근 1년 지출 추이");
+            g2.drawString(titleStr, left, 18);
             g2.dispose();
         }
     }
@@ -1990,12 +2155,30 @@ public class GeojiTalchulApp extends JFrame {
             centerPanel.setOpaque(false);
             centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
 
+            final ImageIcon[] selectedImage = {null};
+            final String[] selectedBase64 = {null}; // 추후 백엔드 연동용 Base64 데이터
+
             JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
             attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
             attachBtn.setBackground(new Color(245, 245, 245));
             attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
             attachBtn.setFocusPainted(false);
             attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            attachBtn.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
+                if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
+                        selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
+                        selectedImage[0] = new ImageIcon(bytes);
+                        attachBtn.setText("📷 " + chooser.getSelectedFile().getName() + " 첨부 완료!");
+                        attachBtn.setForeground(GREEN_DARK);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
 
             JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
             textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
@@ -2031,13 +2214,19 @@ public class GeojiTalchulApp extends JFrame {
             
             // 글 올리면 즉시 피드 맨 위에 카드 꽂아버리기!
             submitBtn.addActionListener(e -> {
-                String text = textArea.getText();
-                if(!text.trim().isEmpty() && !text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) {
-                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), text, 0, 0), 0);
+                String text = textArea.getText().trim();
+                boolean isDefaultText = text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!");
+                String postText = isDefaultText ? "" : text;
+                
+                // 내용이 있거나, 사진이 첨부되었거나 둘 중 하나면 통과!
+                if(!postText.isEmpty() || selectedImage[0] != null) {
+                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
                     feedContainer.add(Box.createVerticalStrut(20), 1);
                     state.points += 30;
                     refreshAll();
                     dialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "내용을 입력하거나 사진을 첨부해 주세요.", "작성 오류", JOptionPane.WARNING_MESSAGE);
                 }
             });
 
@@ -2063,20 +2252,21 @@ public class GeojiTalchulApp extends JFrame {
             
             // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
             if(feedContainer.getComponentCount() == 0){
-                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", 32, 8));
+                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", null, 32, 8));
                 feedContainer.add(Box.createVerticalStrut(20)); // 카드 사이 간격
-                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", 21, 4));
+                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", null, 21, 4));
             }
             feedContainer.revalidate();
             feedContainer.repaint();
         }
 
-        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드
-        private JPanel buildInstaCard(String author, String text, int likes, int comments) {
+        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드 (사진 유무 분기 처리)
+        private JPanel buildInstaCard(String author, String text, ImageIcon image, int likes, int comments) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
-            card.setMaximumSize(new Dimension(800, 380)); 
+            // 사진이 없으면 높이를 줄임
+            card.setMaximumSize(new Dimension(800, image != null ? 380 : 180)); 
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             header.setOpaque(false);
@@ -2086,14 +2276,6 @@ public class GeojiTalchulApp extends JFrame {
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             header.add(profilePic);
             header.add(nameLabel);
-
-            JPanel imageBox = new JPanel(new BorderLayout());
-            imageBox.setBackground(new Color(240, 240, 240));
-            imageBox.setPreferredSize(new Dimension(0, 200)); 
-            JLabel imgIcon = new JLabel("📷 사진이 들어갈 자리입니다", SwingConstants.CENTER);
-            imgIcon.setForeground(Color.GRAY);
-            imgIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-            imageBox.add(imgIcon, BorderLayout.CENTER);
 
             JPanel bottom = new JPanel(new BorderLayout(0, 8));
             bottom.setOpaque(false);
@@ -2118,8 +2300,23 @@ public class GeojiTalchulApp extends JFrame {
             bottom.add(contentArea, BorderLayout.CENTER);
 
             card.add(header, BorderLayout.NORTH);
-            card.add(imageBox, BorderLayout.CENTER);
-            card.add(bottom, BorderLayout.SOUTH);
+            
+            if (image != null) {
+                JPanel imageBox = new JPanel(new BorderLayout());
+                imageBox.setBackground(new Color(240, 240, 240));
+                imageBox.setPreferredSize(new Dimension(0, 200)); 
+                
+                // 이미지가 영역을 벗어나지 않게 리사이징
+                Image scaled = image.getImage().getScaledInstance(400, 200, Image.SCALE_SMOOTH);
+                JLabel imgIcon = new JLabel(new ImageIcon(scaled));
+                imageBox.add(imgIcon, BorderLayout.CENTER);
+                
+                card.add(imageBox, BorderLayout.CENTER);
+                card.add(bottom, BorderLayout.SOUTH);
+            } else {
+                // 사진이 없을 때는 bottom 패널을 CENTER에 두어 위로 끌어올림
+                card.add(bottom, BorderLayout.CENTER);
+            }
 
             return card;
         }
@@ -2156,9 +2353,64 @@ public class GeojiTalchulApp extends JFrame {
             addShopItem(items," 음원 이용권","1개월","7,000P",7000);
             addShopItem(items," 영화 관람권","영화 1편","10,000P",10000);
             addShopItem(items," 랜덤 박스","랜덤 보상","15,000P",15000);
-            addShopItem(items," 프로거지 스킨","캐릭터 꾸미기","20,000P",20000);
+            addSkinShopItem(items, " 프로거지 스킨", "캐릭터 꾸미기", "5,000P", 5000, "richman.png");
             p.add(items,BorderLayout.CENTER);
             return p;
+        }
+
+        void addSkinShopItem(JPanel parent, String name, String subtitle, String price, int cost, String skinFile) {
+            JPanel c = roundedPanel(new Color(249, 250, 251), 14);
+            c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
+
+            JLabel i = new JLabel(loadSkinIcon(skinFile, 110, 110), SwingConstants.CENTER);
+            i.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel n = new JLabel(name);
+            n.setFont(FONT_BOLD);
+            n.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel sub = new JLabel(subtitle);
+            sub.setForeground(MUTED);
+            sub.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel pr = new JLabel(price);
+            pr.setForeground(GREEN_DARK);
+            pr.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JButton buy = primaryButton(state.ownedSkins.contains(skinFile) ? "보유 중" : "구매");
+            buy.setAlignmentX(Component.CENTER_ALIGNMENT);
+            buy.setEnabled(!state.ownedSkins.contains(skinFile));
+
+            buy.addActionListener(e -> {
+                if (state.ownedSkins.contains(skinFile)) {
+                    JOptionPane.showMessageDialog(this, "이미 보유한 스킨입니다.", "포인트 상점", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+
+                if (state.points >= cost) {
+                    state.points -= cost;
+                    state.ownedSkins.add(skinFile);
+                    refreshAll();
+
+                    JOptionPane.showMessageDialog(this, name + " 구매 완료!\n\n이제 홈 화면의 [스킨 설정]에서 사용할 수 있습니다.", "포인트 상점",
+                            JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this, "포인트가 부족합니다.", "포인트 상점", JOptionPane.WARNING_MESSAGE);
+                }
+            });
+
+            c.add(Box.createVerticalGlue());
+            c.add(i);
+            c.add(Box.createVerticalStrut(8));
+            c.add(n);
+            c.add(Box.createVerticalStrut(3));
+            c.add(sub);
+            c.add(pr);
+            c.add(Box.createVerticalStrut(8));
+            c.add(buy);
+            c.add(Box.createVerticalGlue());
+
+            parent.add(c);
         }
 
         void addShopItem(JPanel parent,String icon,String name,String price,int cost){
@@ -2349,6 +2601,11 @@ public class GeojiTalchulApp extends JFrame {
         int alertThreshold=80;
         int points=14500;
         int nextId=100;
+        
+        // 기본적으로 거지 스킨을 보유하고 시작합니다.
+        LinkedHashSet<String> ownedSkins = new LinkedHashSet<>(Arrays.asList("poorman.png"));
+        String currentSkin = "poorman.png";
+
         List<String> largeCategories=Arrays.asList(
                 "주거/통신","금융/보험","정기구독","식비","교통/차량",
                 "생활/쇼핑","취미/여가","경조사/선물","의료/건강","유지/수리"
@@ -2396,6 +2653,11 @@ public class GeojiTalchulApp extends JFrame {
         Map<String,Long> largeTotals(){
             return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
                     .collect(Collectors.groupingBy(e->e.large,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
+        }
+
+        Map<String,Long> mediumTotals(){
+            return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
+                    .collect(Collectors.groupingBy(e->e.medium,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
         List<Expense> fixedCandidates(){
@@ -2485,6 +2747,93 @@ public class GeojiTalchulApp extends JFrame {
         g.gridx=0;g.gridy=row;g.weightx=0.25;
         JLabel l=new JLabel(label);l.setFont(FONT_BOLD);p.add(l,g);
         g.gridx=1;g.weightx=0.75;p.add(c,g);
+    }
+
+    // ---------- SKIN ----------
+    ImageIcon loadSkinIcon(String skinFile, int width, int height) {
+        java.net.URL resource = getClass().getResource("/com/richman/ui/" + skinFile);
+        if (resource == null) {
+            return new ImageIcon();
+        }
+
+        ImageIcon original = new ImageIcon(resource);
+        Image scaled = original.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        return new ImageIcon(scaled);
+    }
+
+    String skinDisplayName(String skinFile) {
+        if ("poorman.png".equals(skinFile)) return "거지 스킨";
+        if ("richman.png".equals(skinFile)) return "프로 거지 스킨";
+        return skinFile;
+    }
+
+    void showSkinSelectionDialog() {
+        JDialog dlg = new JDialog(this, "스킨 설정", true);
+        dlg.setSize(620, 470);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout(12, 12));
+        root.setBackground(BG);
+        root.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        JLabel title = new JLabel("현재 보유중인 스킨");
+        title.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
+        title.setForeground(TEXT);
+        root.add(title, BorderLayout.NORTH);
+
+        JPanel skinList = new JPanel(new GridLayout(1, Math.max(1, state.ownedSkins.size()), 14, 14));
+        skinList.setOpaque(false);
+
+        for (String skinFile : state.ownedSkins) {
+            JPanel card = roundedPanel(WHITE, 18);
+            card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+
+            JLabel image = new JLabel(loadSkinIcon(skinFile, 150, 150), SwingConstants.CENTER);
+            image.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JLabel name = new JLabel(skinDisplayName(skinFile), SwingConstants.CENTER);
+            name.setFont(FONT_BOLD);
+            name.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            boolean current = skinFile.equals(state.currentSkin);
+            JLabel status = new JLabel(current ? "현재 사용 중" : "", SwingConstants.CENTER);
+            status.setForeground(GREEN_DARK);
+            status.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+            status.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JButton select = primaryButton(current ? "사용 중" : "적용");
+            select.setAlignmentX(Component.CENTER_ALIGNMENT);
+            select.setEnabled(!current);
+            select.addActionListener(e -> {
+                state.currentSkin = skinFile;
+                dlg.dispose();
+                refreshAll();
+            });
+
+            card.add(Box.createVerticalGlue());
+            card.add(image);
+            card.add(Box.createVerticalStrut(8));
+            card.add(name);
+            card.add(Box.createVerticalStrut(3));
+            card.add(status);
+            card.add(Box.createVerticalStrut(8));
+            card.add(select);
+            card.add(Box.createVerticalGlue());
+
+            skinList.add(card);
+        }
+
+        root.add(skinList, BorderLayout.CENTER);
+
+        JButton close = flatButton("닫기");
+        close.addActionListener(e -> dlg.dispose());
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottom.setOpaque(false);
+        bottom.add(close);
+        root.add(bottom, BorderLayout.SOUTH);
+
+        dlg.setContentPane(root);
+        dlg.setVisible(true);
     }
 
     // ---------- HTTP 유틸리티 ----------
