@@ -217,6 +217,47 @@ public class GeojiTalchulApp extends JFrame {
         }.execute();
     }
 
+    // 서버에서 커뮤니티 피드 싹 긁어오기
+    void loadCommunityFeed() {
+        new SwingWorker<JsonObject, Void>() {
+            @Override
+            protected JsonObject doInBackground() throws Exception {
+                return httpGet("http://localhost:8080/api/posts");
+            }
+            @Override
+            protected void done() {
+                try {
+                    JsonObject res = get();
+                    if (res != null && res.has("data")) {
+                        communityPanel.feedContainer.removeAll(); // 가짜 데이터 밀어버림
+                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
+                        for (com.google.gson.JsonElement el : arr) {
+                            JsonObject obj = el.getAsJsonObject();
+                            String author = obj.get("author").getAsString();
+                            String content = obj.get("content").getAsString();
+                            int likes = obj.get("likes").getAsInt();
+                            int comments = obj.get("comments").getAsInt();
+                            String base64Img = obj.has("image") && !obj.get("image").isJsonNull() ? obj.get("image").getAsString() : "";
+                            
+                            ImageIcon imgIcon = null;
+                            if (!base64Img.isEmpty()) {
+                                byte[] bytes = java.util.Base64.getDecoder().decode(base64Img);
+                                imgIcon = new ImageIcon(bytes);
+                            }
+                            // 화면에 진짜 카드 꽂기
+                            communityPanel.feedContainer.add(communityPanel.buildInstaCard(author, content, imgIcon, likes, comments));
+                            communityPanel.feedContainer.add(Box.createVerticalStrut(20));
+                        }
+                        communityPanel.feedContainer.revalidate();
+                        communityPanel.feedContainer.repaint();
+                    }
+                } catch (Exception ex) {
+                    System.err.println("피드 불러오기 실패: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG);
@@ -282,9 +323,11 @@ public class GeojiTalchulApp extends JFrame {
                         JsonObject res = get();
                         if (res != null && res.has("userId")) {
                             currentUserId = res.get("userId").getAsInt();
-                            
+
                             // 로그인 성공 후 내 지출 내역 가져오기
                             loadMyExpensesFromServer();
+                            loadCommunityFeed();
+
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
                             userLabel.setText(userName + " 님");
                             
@@ -905,25 +948,38 @@ public class GeojiTalchulApp extends JFrame {
         cancel.setFocusPainted(false);
         JButton save = primaryButton("설정 저장");
         cancel.addActionListener(e -> dlg.dispose());
+        // 예산 설정하면 서버로
         save.addActionListener(e -> {
             String raw = budgetField.getText().replace(",", "").trim();
             try {
                 long newBudget = Long.parseLong(raw);
                 if (newBudget <= 0) throw new NumberFormatException();
-                state.budget = newBudget;
-                dlg.dispose();
-                refreshAll();
-                JOptionPane.showMessageDialog(this,
-                        "목표 예산이 " + won(newBudget) + "으로 설정되었습니다.",
-                        "설정 완료", JOptionPane.INFORMATION_MESSAGE);
+                
+                save.setEnabled(false);
+                save.setText("저장 중...");
+                new SwingWorker<JsonObject, Void>() {
+                    @Override
+                    protected JsonObject doInBackground() throws Exception {
+                        JsonObject body = new JsonObject();
+                        body.addProperty("userId", currentUserId);
+                        body.addProperty("budgetAmount", newBudget);
+                        return httpPost("http://localhost:8080/api/budgets", body.toString()); // 예산 업데이트 API
+                    }
+                    @Override
+                    protected void done() {
+                        state.budget = newBudget;
+                        dlg.dispose();
+                        refreshAll();
+                        JOptionPane.showMessageDialog(GeojiTalchulApp.this, "목표 예산이 " + won(newBudget) + "으로 설정되었습니다.", "설정 완료", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }.execute();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dlg,
-                        "목표 예산은 0보다 큰 숫자로 입력해주세요.",
-                        "입력 오류", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "목표 예산은 0보다 큰 숫자로 입력해주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
                 budgetField.requestFocus();
                 budgetField.selectAll();
             }
         });
+
         bottom.add(cancel);
         bottom.add(save);
         root.add(bottom, BorderLayout.SOUTH);
@@ -1657,11 +1713,25 @@ public class GeojiTalchulApp extends JFrame {
                         new Color(240, 190, 190), 1, true
                 ));
 
+                // 백엔드 서버에 DELETE 보내기
                 del.addActionListener(e -> {
-                    state.expenses.remove(x);
-                    dlg.dispose();
-                    refreshAll();
-                    showDateDetail(date);
+                    int res = JOptionPane.showConfirmDialog(dlg, "정말 삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
+                    if (res == JOptionPane.YES_OPTION) {
+                        new SwingWorker<JsonObject, Void>() {
+                            @Override
+                            protected JsonObject doInBackground() throws Exception {
+                                // 해당 지출의 고유 ID(x.id)를 서버로 보내서 삭제
+                                return httpDelete("http://localhost:8080/api/expenses?id=" + x.id);
+                            }
+                            @Override
+                            protected void done() {
+                                state.expenses.remove(x); // 화면에서도 삭제
+                                dlg.dispose();
+                                refreshAll();
+                                showDateDetail(date); // 창 새로고침
+                            }
+                        }.execute();
+                    }
                 });
 
                 // 오른쪽 영역
@@ -2229,21 +2299,18 @@ public class GeojiTalchulApp extends JFrame {
             return p;
         }
 
-        // 🌟 1. 피드 화면을 인스타 갬성으로 변경!
+        // 피드 화면 (글쓰기 버튼 삭제 완료)
         JPanel buildFeed() {
-            JPanel p=roundedPanel(WHITE,18);
-            p.setLayout(new BorderLayout(10,10));
-            JPanel head=new JPanel(new BorderLayout());
+            JPanel p = roundedPanel(WHITE, 18);
+            p.setLayout(new BorderLayout(10, 10));
+            
+            JPanel head = new JPanel(new BorderLayout());
             head.setOpaque(false);
-            JLabel title=new JLabel("SNS 피드");
+            JLabel title = new JLabel("SNS 피드");
             title.setFont(FONT_TITLE);
-            JButton write=primaryButton("+ 글쓰기");
             
-            // 🌟 촌스러운 글쓰기 창 대신, 새로 만든 팝업 연결!
-            write.addActionListener(e->showWritePostDialog()); 
-            
-            head.add(title,BorderLayout.WEST); head.add(write,BorderLayout.EAST);
-            p.add(head,BorderLayout.NORTH);
+            head.add(title, BorderLayout.WEST); // 제목만 왼쪽에 딱 배치
+            p.add(head, BorderLayout.NORTH);
             
             // 🌟 세로로 카드가 차곡차곡 쌓이도록 설정
             feedContainer.setLayout(new BoxLayout(feedContainer, BoxLayout.Y_AXIS));
@@ -2254,7 +2321,7 @@ public class GeojiTalchulApp extends JFrame {
             scroll.setBorder(null);
             scroll.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 부드럽게!
             
-            p.add(scroll,BorderLayout.CENTER);
+            p.add(scroll, BorderLayout.CENTER);
             return p;
         }
 
@@ -2272,105 +2339,6 @@ public class GeojiTalchulApp extends JFrame {
                 state.points += 50;
                 refreshAll();
             }
-        }
-
-        // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업!
-        private void showWritePostDialog() {
-            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "새 게시물 작성", true);
-            dialog.setSize(450, 420);
-            dialog.setLocationRelativeTo(this);
-            dialog.setLayout(new BorderLayout());
-            dialog.getContentPane().setBackground(WHITE);
-
-            JLabel title = new JLabel("새 게시물 만들기", SwingConstants.CENTER);
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
-            title.setBorder(new EmptyBorder(20, 0, 15, 0));
-            dialog.add(title, BorderLayout.NORTH);
-
-            JPanel centerPanel = new JPanel(new BorderLayout(0, 15));
-            centerPanel.setOpaque(false);
-            centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
-
-            final ImageIcon[] selectedImage = {null};
-            final String[] selectedBase64 = {null}; // 추후 백엔드 연동용 Base64 데이터
-
-            JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
-            attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-            attachBtn.setBackground(new Color(245, 245, 245));
-            attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
-            attachBtn.setFocusPainted(false);
-            attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            attachBtn.addActionListener(e -> {
-                JFileChooser chooser = new JFileChooser();
-                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
-                if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
-                    try {
-                        byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
-                        selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
-                        selectedImage[0] = new ImageIcon(bytes);
-                        attachBtn.setText("📷 " + chooser.getSelectedFile().getName() + " 첨부 완료!");
-                        attachBtn.setForeground(GREEN_DARK);
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                    }
-                }
-            });
-
-            JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
-            textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
-            textArea.setLineWrap(true);
-            textArea.addFocusListener(new FocusAdapter() {
-                public void focusGained(FocusEvent e) {
-                    if (textArea.getText().equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) textArea.setText("");
-                }
-            });
-            
-            JScrollPane scrollPane = new JScrollPane(textArea);
-            scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1));
-
-            centerPanel.add(attachBtn, BorderLayout.NORTH);
-            centerPanel.add(scrollPane, BorderLayout.CENTER);
-            dialog.add(centerPanel, BorderLayout.CENTER);
-
-            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-            bottomPanel.setOpaque(false);
-            bottomPanel.setBorder(new EmptyBorder(10, 25, 20, 25));
-
-            JButton cancelBtn = new JButton("취소");
-            cancelBtn.setBackground(WHITE);
-            cancelBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-            cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            cancelBtn.addActionListener(e -> dialog.dispose());
-            
-            JButton submitBtn = new JButton("게시하기");
-            submitBtn.setBackground(GREEN_DARK); 
-            submitBtn.setForeground(WHITE);
-            submitBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-            submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            
-            // 글 올리면 즉시 피드 맨 위에 카드 꽂아버리기!
-            submitBtn.addActionListener(e -> {
-                String text = textArea.getText().trim();
-                boolean isDefaultText = text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!");
-                String postText = isDefaultText ? "" : text;
-                
-                // 내용이 있거나, 사진이 첨부되었거나 둘 중 하나면 통과!
-                if(!postText.isEmpty() || selectedImage[0] != null) {
-                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
-                    feedContainer.add(Box.createVerticalStrut(20), 1);
-                    state.points += 30;
-                    refreshAll();
-                    dialog.dispose();
-                } else {
-                    JOptionPane.showMessageDialog(dialog, "내용을 입력하거나 사진을 첨부해 주세요.", "작성 오류", JOptionPane.WARNING_MESSAGE);
-                }
-            });
-
-            bottomPanel.add(cancelBtn);
-            bottomPanel.add(submitBtn);
-            dialog.add(bottomPanel, BorderLayout.SOUTH);
-
-            dialog.setVisible(true);
         }
 
         void refresh() {
@@ -2997,6 +2965,30 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- HTTP 유틸리티 ----------
     /** JSON Body를 POST하고 응답을 JsonObject로 반환. 오류 시 null 반환. */
+    
+    /** DELETE 요청 */
+    JsonObject httpDelete(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("DELETE");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                return JsonParser.parseString(sb.toString()).getAsJsonObject();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     JsonObject httpPost(String urlStr, String jsonBody) {
         try {
             URL url = new URL(urlStr);
