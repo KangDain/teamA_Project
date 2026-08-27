@@ -2299,29 +2299,31 @@ public class GeojiTalchulApp extends JFrame {
             return p;
         }
 
-        // 피드 화면 (글쓰기 버튼 삭제 완료)
+        // 피드 화면
         JPanel buildFeed() {
-            JPanel p = roundedPanel(WHITE, 18);
-            p.setLayout(new BorderLayout(10, 10));
-            
-            JPanel head = new JPanel(new BorderLayout());
+            JPanel p=roundedPanel(WHITE,18);
+            p.setLayout(new BorderLayout(10,10));
+            JPanel head=new JPanel(new BorderLayout());
             head.setOpaque(false);
-            JLabel title = new JLabel("SNS 피드");
+            JLabel title=new JLabel("SNS 피드");
             title.setFont(FONT_TITLE);
+            JButton write=primaryButton("+ 글쓰기");
             
-            head.add(title, BorderLayout.WEST); // 제목만 왼쪽에 딱 배치
-            p.add(head, BorderLayout.NORTH);
+            // 팝업 연결
+            write.addActionListener(e->showWritePostDialog()); 
             
-            // 🌟 세로로 카드가 차곡차곡 쌓이도록 설정
+            head.add(title,BorderLayout.WEST); head.add(write,BorderLayout.EAST);
+            p.add(head,BorderLayout.NORTH);
+            
             feedContainer.setLayout(new BoxLayout(feedContainer, BoxLayout.Y_AXIS));
             feedContainer.setBackground(WHITE);
             feedContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
 
             JScrollPane scroll = new JScrollPane(feedContainer);
             scroll.setBorder(null);
-            scroll.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 부드럽게!
+            scroll.getVerticalScrollBar().setUnitIncrement(16); 
             
-            p.add(scroll, BorderLayout.CENTER);
+            p.add(scroll,BorderLayout.CENTER);
             return p;
         }
 
@@ -2339,6 +2341,103 @@ public class GeojiTalchulApp extends JFrame {
                 state.points += 50;
                 refreshAll();
             }
+        }
+
+        // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업 (완벽 복구!)
+        private void showWritePostDialog() {
+            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "새 게시물 작성", true);
+            dialog.setSize(450, 420);
+            dialog.setLocationRelativeTo(this);
+            dialog.setLayout(new BorderLayout());
+            dialog.getContentPane().setBackground(WHITE);
+
+            JLabel title = new JLabel("새 게시물 만들기", SwingConstants.CENTER);
+            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            title.setBorder(new EmptyBorder(20, 0, 15, 0));
+            dialog.add(title, BorderLayout.NORTH);
+
+            JPanel centerPanel = new JPanel(new BorderLayout(0, 15));
+            centerPanel.setOpaque(false);
+            centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
+
+            final ImageIcon[] selectedImage = {null};
+            final String[] selectedBase64 = {null}; 
+
+            JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
+            attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            attachBtn.setBackground(new Color(245, 245, 245));
+            attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
+            attachBtn.setFocusPainted(false);
+            attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            attachBtn.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
+                if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
+                        selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
+                        selectedImage[0] = new ImageIcon(bytes);
+                        attachBtn.setText("📷 " + chooser.getSelectedFile().getName() + " 첨부 완료!");
+                        attachBtn.setForeground(GREEN_DARK);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+
+            JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
+            textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
+            textArea.setLineWrap(true);
+            textArea.addFocusListener(new FocusAdapter() {
+                public void focusGained(FocusEvent e) {
+                    if (textArea.getText().equals("오늘의 지출 내역이나 다짐을 공유해 보세요!")) textArea.setText("");
+                }
+            });
+            
+            JScrollPane scrollPane = new JScrollPane(textArea);
+            scrollPane.setBorder(BorderFactory.createLineBorder(new Color(220, 220, 220), 1));
+
+            centerPanel.add(attachBtn, BorderLayout.NORTH);
+            centerPanel.add(scrollPane, BorderLayout.CENTER);
+            dialog.add(centerPanel, BorderLayout.CENTER);
+
+            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            bottomPanel.setOpaque(false);
+            bottomPanel.setBorder(new EmptyBorder(10, 25, 20, 25));
+
+            JButton cancelBtn = new JButton("취소");
+            cancelBtn.setBackground(WHITE);
+            cancelBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            cancelBtn.addActionListener(e -> dialog.dispose());
+            
+            JButton submitBtn = new JButton("게시하기");
+            submitBtn.setBackground(GREEN_DARK); 
+            submitBtn.setForeground(WHITE);
+            submitBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            
+            submitBtn.addActionListener(e -> {
+                String text = textArea.getText().trim();
+                boolean isDefaultText = text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!");
+                String postText = isDefaultText ? "" : text;
+                
+                if(!postText.isEmpty() || selectedImage[0] != null) {
+                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
+                    feedContainer.add(Box.createVerticalStrut(20), 1);
+                    state.points += 30;
+                    refreshAll();
+                    dialog.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "내용을 입력하거나 사진을 첨부해 주세요.", "작성 오류", JOptionPane.WARNING_MESSAGE);
+                }
+            });
+
+            bottomPanel.add(cancelBtn);
+            bottomPanel.add(submitBtn);
+            dialog.add(bottomPanel, BorderLayout.SOUTH);
+
+            dialog.setVisible(true);
         }
 
         void refresh() {
@@ -2364,18 +2463,20 @@ public class GeojiTalchulApp extends JFrame {
             feedContainer.repaint();
         }
 
-        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드 (사진 유무 분기 처리)
+        // 🌟 4. 댓글 기능 완벽하게 적출된 인스타 카드!
         private JPanel buildInstaCard(String author, String text, ImageIcon image, int likes, int comments) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
-            // 사진이 없으면 높이를 줄임
             card.setMaximumSize(new Dimension(800, image != null ? 380 : 180)); 
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             header.setOpaque(false);
             JLabel profilePic = new JLabel("😎"); 
             profilePic.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+            profilePic.setPreferredSize(new Dimension(36, 36));
+            profilePic.setHorizontalAlignment(SwingConstants.CENTER);
+            profilePic.setVerticalAlignment(SwingConstants.CENTER);
             JLabel nameLabel = new JLabel(author);
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             header.add(profilePic);
@@ -2387,7 +2488,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
             actions.setOpaque(false);
             
-            // 🌟 1. 좋아요 버튼 기능
+            // --- 좋아요 버튼 ---
             int[] currentLikes = {likes};
             boolean[] isLiked = {false};
             
@@ -2425,23 +2526,7 @@ public class GeojiTalchulApp extends JFrame {
                 }
             });
 
-            // 🌟 2. 날아갔던 댓글 버튼 기능 복구!
-            int[] currentComments = {comments};
-            JPanel commentBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-            commentBtn.setOpaque(false);
-            commentBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            JLabel commentIcon = new JLabel("💬");
-            commentIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-            commentIcon.setPreferredSize(new Dimension(24, 24));
-            commentIcon.setHorizontalAlignment(SwingConstants.CENTER);
-            commentIcon.setVerticalAlignment(SwingConstants.CENTER);
-            JLabel commentText = new JLabel("댓글 " + currentComments[0]);
-            commentText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
-            commentBtn.add(commentIcon);
-            commentBtn.add(commentText);
-
-            actions.add(likeBtn);
-            actions.add(commentBtn);
+            actions.add(likeBtn); // 🌟 댓글 버튼(commentBtn)은 추가 안 하고 버림!
 
             JTextArea contentArea = new JTextArea(text);
             contentArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
@@ -2460,7 +2545,6 @@ public class GeojiTalchulApp extends JFrame {
                 imageBox.setBackground(new Color(240, 240, 240));
                 imageBox.setPreferredSize(new Dimension(0, 200)); 
                 
-                // 이미지가 영역을 벗어나지 않게 리사이징
                 Image scaled = image.getImage().getScaledInstance(400, 200, Image.SCALE_SMOOTH);
                 JLabel imgIcon = new JLabel(new ImageIcon(scaled));
                 imageBox.add(imgIcon, BorderLayout.CENTER);
@@ -2468,7 +2552,6 @@ public class GeojiTalchulApp extends JFrame {
                 card.add(imageBox, BorderLayout.CENTER);
                 card.add(bottom, BorderLayout.SOUTH);
             } else {
-                // 사진이 없을 때는 bottom 패널을 CENTER에 두어 위로 끌어올림
                 card.add(bottom, BorderLayout.CENTER);
             }
 
