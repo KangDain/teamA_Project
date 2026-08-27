@@ -731,15 +731,20 @@ public class GeojiTalchulApp extends JFrame {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 9));
         right.setBackground(WHITE);
 
+        JButton friendsBtn = primaryButton("친구 관리");
+        friendsBtn.addActionListener(e -> {
+            if (homePanel != null) {
+                homePanel.showFriendsDialog();
+            }
+        });
+
         JButton bell = new JButton("♟");
         styleIconButton(bell);
         bell.addActionListener(e -> showNotifications());
 
-        // 🌟 원흉이었던 setBorder 삭제 완료 (완벽한 알약 쉐입 적용)
         JButton setting = primaryButton("설정");
         setting.addActionListener(e -> showSettings());
 
-        // 🌟 로그아웃 버튼 (FlatLaf 알약 쉐입 적용)
         JButton logout = flatButton("로그아웃");
         logout.addActionListener(e -> {
             int res = JOptionPane.showConfirmDialog(content, "로그아웃 하시겠습니까?", "로그아웃", JOptionPane.YES_NO_OPTION);
@@ -748,6 +753,7 @@ public class GeojiTalchulApp extends JFrame {
             }
         });
 
+        right.add(friendsBtn);
         right.add(bell);
         right.add(setting);
         right.add(logout);
@@ -915,14 +921,14 @@ public class GeojiTalchulApp extends JFrame {
         JPanel recentList = new JPanel();
         PieChart homePie = new PieChart();
         JPanel alertBanner;
-        JLabel homeCharacter; // 🌟 스킨용 캐릭터 라벨 추가
+        JLabel homeCharacter; 
+        List<String> friends = new ArrayList<>(Arrays.asList("절약왕김씨", "소비요정", "통장지킴이")); 
 
         HomePanel() {
-            setLayout(new BorderLayout(0, 20)); // 상단 알림 배너와 본문 사이의 여백 20px
+            setLayout(new BorderLayout(0, 20)); 
             setBackground(BG);
-            setBorder(new EmptyBorder(30, 30, 30, 30)); // 화면 전체 외곽 여백
+            setBorder(new EmptyBorder(30, 30, 30, 30)); 
 
-            // 1. 상단 알림 배너
             alertBanner = buildAlertBanner();
             add(alertBanner, BorderLayout.NORTH);
 
@@ -957,6 +963,111 @@ public class GeojiTalchulApp extends JFrame {
             centerGrid.add(bottomRow);
 
             add(centerGrid, BorderLayout.CENTER);
+        }
+        
+        void showFriendsDialog() {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "친구 관리", true);
+            d.setSize(400, 500);
+            d.setLocationRelativeTo(this);
+            d.getContentPane().setBackground(BG);
+            
+            JPanel p = new JPanel(new BorderLayout(0, 15));
+            p.setOpaque(false);
+            p.setBorder(new EmptyBorder(20, 20, 20, 20));
+            
+            JPanel head = new JPanel(new BorderLayout());
+            head.setOpaque(false);
+            JLabel title = new JLabel("내 친구 목록");
+            title.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            
+            JPanel addBox = new JPanel(new BorderLayout(5, 0));
+            addBox.setOpaque(false);
+            JTextField addTf = new JTextField(10);
+            addTf.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            JButton addBtn = primaryButton("추가");
+            addBtn.setPreferredSize(new Dimension(70, 32));
+            addBox.add(addTf, BorderLayout.CENTER);
+            addBox.add(addBtn, BorderLayout.EAST);
+            
+            head.add(title, BorderLayout.WEST);
+            head.add(addBox, BorderLayout.EAST);
+            
+            JPanel listContainer = new JPanel();
+            listContainer.setLayout(new BoxLayout(listContainer, BoxLayout.Y_AXIS));
+            listContainer.setBackground(WHITE);
+            
+            JScrollPane scroll = new JScrollPane(listContainer);
+            scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            
+            Runnable[] refreshBox = new Runnable[1];
+            refreshBox[0] = () -> {
+                listContainer.removeAll();
+                if (friends.isEmpty()) {
+                    JLabel empty = new JLabel("등록된 친구가 없습니다.");
+                    empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                    empty.setForeground(MUTED);
+                    empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                    empty.setBorder(new EmptyBorder(20, 0, 0, 0));
+                    listContainer.add(empty);
+                } else {
+                    for (String f : friends) {
+                        JPanel row = new JPanel(new BorderLayout());
+                        row.setBackground(WHITE);
+                        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+                        row.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
+                            new EmptyBorder(10, 15, 10, 15)
+                        ));
+                        
+                        JLabel name = new JLabel(f);
+                        name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                        
+                        JButton del = new JButton("삭제");
+                        del.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                        del.setBackground(new Color(255, 235, 235));
+                        del.setForeground(RED);
+                        del.setBorder(new EmptyBorder(4, 10, 4, 10));
+                        del.setFocusPainted(false);
+                        del.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                        del.addActionListener(ev -> {
+                            int res = JOptionPane.showConfirmDialog(d, "'" + f + "' 님을 친구 목록에서 삭제하시겠습니까?", "친구 삭제 확인", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                            if (res == JOptionPane.YES_OPTION) {
+                                friends.remove(f);
+                                refreshBox[0].run();
+                            }
+                        });
+                        
+                        row.add(name, BorderLayout.WEST);
+                        row.add(del, BorderLayout.EAST);
+                        listContainer.add(row);
+                    }
+                }
+                listContainer.revalidate();
+                listContainer.repaint();
+            };
+            
+            addBtn.addActionListener(e -> {
+                String newF = addTf.getText().trim();
+                if (!newF.isEmpty()) {
+                    if (friends.contains(newF)) {
+                        JOptionPane.showMessageDialog(d, "이미 등록된 친구입니다.");
+                    } else {
+                        friends.add(newF);
+                        addTf.setText("");
+                        refreshBox[0].run();
+                        JOptionPane.showMessageDialog(d, newF + " 님을 친구로 추가했습니다!");
+                    }
+                }
+            });
+            
+            refreshBox[0].run();
+            
+            p.add(head, BorderLayout.NORTH);
+            p.add(scroll, BorderLayout.CENTER);
+            
+            d.add(p);
+            d.setVisible(true);
         }
 
         JPanel buildAlertBanner() {
@@ -2644,34 +2755,7 @@ public class GeojiTalchulApp extends JFrame {
                 }
             });
 
-            int[] currentComments = {comments};
-            JPanel commentBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-            commentBtn.setOpaque(false);
-            commentBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            JLabel commentIcon = new JLabel("💬");
-            commentIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-            commentIcon.setPreferredSize(new Dimension(24, 24));
-            commentIcon.setHorizontalAlignment(SwingConstants.CENTER);
-            commentIcon.setVerticalAlignment(SwingConstants.CENTER);
-            JLabel commentText = new JLabel("댓글 " + currentComments[0]);
-            commentText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
-            commentBtn.add(commentIcon);
-            commentBtn.add(commentText);
-            
-            DefaultListModel<String> commentModel = new DefaultListModel<>();
-            for (int i = 0; i < comments; i++) {
-                commentModel.addElement("익명: 멋진 글이네요!");
-            }
-
-            commentBtn.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    showCommentDialog(author, commentModel, commentText, currentComments);
-                }
-            });
-
             actions.add(likeBtn);
-            actions.add(commentBtn);
 
             JTextArea contentArea = new JTextArea(text);
             contentArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
@@ -2705,55 +2789,6 @@ public class GeojiTalchulApp extends JFrame {
             return card;
         }
 
-        private void showCommentDialog(String author, DefaultListModel<String> model, JLabel btn, int[] count) {
-            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), author + "님의 게시물 댓글", true);
-            d.setSize(350, 400);
-            d.setLocationRelativeTo(this);
-            d.setLayout(new BorderLayout());
-            
-            JList<String> list = new JList<>(model);
-            list.setFont(FONT);
-            
-            list.setCellRenderer(new DefaultListCellRenderer() {
-                @Override
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                    JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    label.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(240, 240, 240)),
-                        new EmptyBorder(12, 12, 12, 12)
-                    ));
-                    return label;
-                }
-            });
-            
-            d.add(new JScrollPane(list), BorderLayout.CENTER);
-            
-            JPanel p = new JPanel(new BorderLayout(5, 5));
-            p.setBorder(new EmptyBorder(10, 10, 10, 10));
-            JTextField tf = new JTextField();
-            tf.setFont(FONT);
-            JButton b = new JButton("등록");
-            b.setFont(FONT_BOLD);
-            b.setBackground(GREEN_DARK);
-            b.setForeground(WHITE);
-            b.addActionListener(e -> {
-                if (!tf.getText().trim().isEmpty()) {
-                    model.addElement(userLabel.getText().replace(" 님", "") + ": " + tf.getText().trim());
-                    count[0]++;
-                    btn.setText("댓글 " + count[0]);
-                    tf.setText("");
-                    int lastIndex = model.getSize() - 1;
-                    if (lastIndex >= 0) {
-                        list.ensureIndexIsVisible(lastIndex);
-                    }
-                }
-            });
-            p.add(tf, BorderLayout.CENTER);
-            p.add(b, BorderLayout.EAST);
-            d.add(p, BorderLayout.SOUTH);
-            
-            d.setVisible(true);
-        }
     }
 
     // ---------- MY / STORE ----------
