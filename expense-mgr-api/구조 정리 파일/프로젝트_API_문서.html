@@ -239,7 +239,7 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
       <tr class="mod-hdr"><td colspan="4">1. 회원 관리 (UserMgrHandler) — /api/users</td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/users/login</code></td><td>로그인 인증</td><td>JSON Body: <code>{"loginId":"...", "password":"..."}</code></td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/users/register</code></td><td>신규 회원가입</td><td>JSON Body: <code>UserBean</code> 객체</td></tr>
-      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/users/check-duplicate</code></td><td>아이디 중복 확인</td><td>Query Param: <code>?loginId=hong123</code></td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/users/check-duplicate</code></td><td>아이디 중복 확인</td><td>Query Param: <code>?loginId=woojin</code></td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/users/{userId}</code></td><td>회원 상세 정보 조회</td><td>Path Variable: <code>userId</code></td></tr>
       <tr><td><span class="mbadge upd">PUT</span></td><td><code>/api/users/{userId}</code></td><td>회원 정보 수정</td><td>Path: <code>userId</code>, Body: <code>UserBean</code></td></tr>
       <tr><td><span class="mbadge upd">PUT</span></td><td><code>/api/users/{userId}/password</code></td><td>비밀번호 변경</td><td>Path: <code>userId</code>, Body: <code>{"newPassword":"..."}</code></td></tr>
@@ -262,16 +262,19 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
       <!-- 4. 예산 -->
       <tr class="mod-hdr"><td colspan="4">4. 예산 관리 (BudgetMgrHandler) — /api/budgets</td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/budgets</code></td><td>회원 설정 예산 목록</td><td>Query Param: <code>?userId=1</code></td></tr>
-      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/budgets</code></td><td>예산 등록 (전체 예산 시 largeId=null)</td><td>JSON Body: <code>BudgetBean</code> 객체</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/budgets</code></td><td>카테고리별 예산 등록</td><td>JSON Body: <code>BudgetBean</code> 객체</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/budgets/total</code></td><td>총(전체) 예산 등록/수정</td><td>JSON Body: <code>BudgetBean</code> 객체</td></tr>
 
       <!-- 5. 포인트 -->
       <tr class="mod-hdr"><td colspan="4">5. 포인트 시스템 (PointMgrHandler) — /api/points</td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/points/balance</code></td><td>포인트 잔액 조회</td><td>Query Param: <code>?userId=1</code></td></tr>
+      <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/points/history</code></td><td>포인트 적립/사용 내역</td><td>Query Param: <code>?userId=1</code></td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/points/earn</code></td><td>포인트 적립 (+amount)</td><td>JSON Body: <code>{"userId":1, "pointType":"출석", "amount":10}</code></td></tr>
 
       <!-- 6. 커뮤니티 -->
       <tr class="mod-hdr"><td colspan="4">6. 커뮤니티 (PostMgrHandler) — /api/posts</td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/posts</code></td><td>전체 게시글 피드 목록</td><td>-</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/posts</code></td><td>신규 게시글 작성</td><td>JSON Body: <code>PostBean</code> 객체</td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/posts/{postId}/like</code></td><td>게시글 좋아요</td><td>Query Param: <code>?userId=1</code></td></tr>
 
       <!-- 7. 친구 -->
@@ -282,6 +285,7 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
       <!-- 8. 팀 챌린지 -->
       <tr class="mod-hdr"><td colspan="4">8. 팀 챌린지 (ChallengeMgrHandler) — /api/challenges</td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/challenges/rooms</code></td><td>전체 팀룸 목록 조회</td><td>-</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/challenges/rooms</code></td><td>팀룸(챌린지) 신규 생성</td><td>JSON Body: <code>TeamRoomBean</code></td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/challenges/rooms/join</code></td><td>팀룸 참가 신청</td><td>JSON Body: <code>TeamMemberBean</code></td></tr>
 
       <!-- 9. 상점 -->
@@ -293,6 +297,10 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
       <tr class="mod-hdr"><td colspan="4">10. 앱 설정 (SettingMgrHandler) — /api/settings</td></tr>
       <tr><td><span class="mbadge sel">GET</span></td><td><code>/api/settings</code></td><td>회원 앱 설정 정보 조회</td><td>Query Param: <code>?userId=1</code></td></tr>
       <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/settings</code></td><td>앱 설정 등록/수정</td><td>JSON Body: <code>AppSettingBean</code> 객체</td></tr>
+      
+      <!-- 11. 프로필 -->
+      <tr class="mod-hdr"><td colspan="4">11. 프로필 관리 (ProfileMgrHandler) — /api/profile</td></tr>
+      <tr><td><span class="mbadge ins">POST</span></td><td><code>/api/profile</code></td><td>프로필 사진 업데이트</td><td>JSON Body: <code>{"userId":1, "profileImage":"base64..."}</code></td></tr>
     </tbody>
   </table>
 
@@ -300,11 +308,11 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
   <h3 style="font-size:15px;font-weight:700;color:var(--primary);margin:30px 0 10px;">💻 전체 JSON 요청/응답 예시</h3>
 
   <!-- 1. 회원 모듈 -->
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-1. POST /api/users/login (로그인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "hong123", "password": "password123"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "phone": "010-1234-5678", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-2. POST /api/users/register (신규 회원가입)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "newuser", "password": "pw1234!@", "userName": "신규회원", "phone": "010-9999-8888", "income": 2000000, "profileImage": "iVBORw0KGgoAAAANSU..."}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "회원가입이 성공적으로 완료되었습니다."}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-3. GET /api/users/check-duplicate?loginId=hong123 (아이디 중복확인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"loginId": "hong123", "duplicate": true, "message": "이미 사용 중인 아이디입니다."}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-4. GET /api/users/1 (회원 상세정보 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "hong123", "userName": "홍길동", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-5. PUT /api/users/1 (회원정보 수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userName": "홍길동", "phone": "010-5555-7777", "income": 4000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "회원정보가 수정되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-1. POST /api/users/login (로그인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "woojin", "password": "password123"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "woojin", "userName": "정우진", "phone": "010-1234-5678", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">1-2. POST /api/users/register (신규 회원가입)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"loginId": "jimin", "password": "pw1234!@", "userName": "한지민", "phone": "010-9999-8888", "income": 2000000, "profileImage": "iVBORw0KGgoAAAANSU..."}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "회원가입이 성공적으로 완료되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-3. GET /api/users/check-duplicate?loginId=woojin (아이디 중복확인)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"loginId": "woojin", "duplicate": true, "message": "이미 사용 중인 아이디입니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">1-4. GET /api/users/1 (회원 상세정보 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK - UserBean)</div><pre>{"userId": 1, "loginId": "woojin", "userName": "정우진", "income": 3500000, "pointBalance": 1250}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-5. PUT /api/users/1 (회원정보 수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userName": "정우진", "phone": "010-5555-7777", "income": 4000000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "회원정보가 수정되었습니다."}</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico upd">PUT</div><div><div class="card-title">1-6. PUT /api/users/1/password (비밀번호 변경)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"newPassword": "newPassword5678!"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "비밀번호가 변경되었습니다."}</pre></div></div></div>
 
   <!-- 2. 지출 모듈 -->
@@ -322,23 +330,26 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
 
   <!-- 4. 예산 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">4-1. GET /api/budgets?userId=1 (예산 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"budgetId": 11, "userId": 1, "largeId": 1, "limitAmount": 500000, "budgetScope": "식비"}]</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">4-2. POST /api/budgets (예산 등록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "largeId": 2, "limitAmount": 300000, "budgetScope": "교통"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "예산이 등록되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">4-2. POST /api/budgets (카테고리별 예산 등록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "largeId": 2, "limitAmount": 300000, "budgetScope": "교통"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "예산이 등록되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">4-3. POST /api/budgets/total (총 예산 등록/수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "limitAmount": 1000000, "budgetScope": "전체"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "총 예산이 성공적으로 반영되었습니다."}</pre></div></div></div>
 
   <!-- 5. 포인트 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">5-1. GET /api/points/balance?userId=1 (포인트 잔액)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"userId": 1, "pointBalance": 1250}</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">5-2. POST /api/points/earn (포인트 적립)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "pointType": "출석체크", "amount": 10}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "10 포인트가 적립되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">5-2. GET /api/points/history?userId=1 (포인트 내역)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"pointId": 1, "userId": 1, "pointType": "출석체크", "amount": 10, "createdAt": "2026-08-25"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">5-3. POST /api/points/earn (포인트 적립)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "pointType": "출석체크", "amount": 10}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "10 포인트가 적립되었습니다."}</pre></div></div></div>
 
   <!-- 6. 커뮤니티 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">6-1. GET /api/posts (전체 피드)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"postId": 5, "userId": 2, "content": "이번 주 외식 안하기 성공!", "likeCount": 12}]</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">6-2. POST /api/posts (게시글 작성)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "content": "오늘부터 가계부 작성 시작합니다!"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "게시글이 등록되었습니다."}</pre></div></div></div>
 
   <!-- 7. 친구 모듈 -->
-  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">7-1. GET /api/friends?userId=1 (수락 친구 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"friendId": 1, "userId": 1, "friendUserId": 2, "status": "수락", "friendUserName": "김철수"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">7-1. GET /api/friends?userId=1 (수락 친구 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"friendId": 1, "userId": 1, "friendUserId": 2, "status": "수락", "friendUserName": "김지현"}]</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">7-2. POST /api/friends/request (친구 요청)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "friendUserId": 2}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "친구 요청을 보냈습니다."}</pre></div></div></div>
 
   <!-- 8. 팀 챌린지 모듈 -->
-  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">8-1. GET /api/challenges/rooms (전체 팀룸 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"roomId": 1, "ownerId": 1, "ownerName": "홍길동", "roomName": "8월 절약왕", "startDate": "2026-08-01", "endDate": "2026-08-31"}]</pre></div></div></div>
-  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">8-2. POST /api/challenges/rooms/join (팀룸 참가)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "goalAmount": 400000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "팀룸에 참가하셨습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">8-1. GET /api/challenges/rooms (전체 팀룸 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"roomId": 1, "ownerId": 1, "ownerName": "정우진", "roomName": "8월 절약왕", "startDate": "2026-08-01", "endDate": "2026-08-31"}]</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">8-2. POST /api/challenges/rooms (팀룸 생성)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"ownerId": 1, "roomName": "30만원 식비 줄이기", "startDate": "2026-08-01", "endDate": "2026-08-31"}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 201 Created)</div><pre>{"success": true, "message": "팀룸이 생성되었습니다."}</pre></div></div></div>
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">8-3. POST /api/challenges/rooms/join (팀룸 참가)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "goalAmount": 400000}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "팀룸에 참가하셨습니다."}</pre></div></div></div>
 
   <!-- 9. 상점 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">9-1. GET /api/store/items (상품 목록)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>[{"itemId": 1, "productName": "스타벅스 쿠폰", "pricePoint": 4500}]</pre></div></div></div>
@@ -347,6 +358,9 @@ src/main/java/api/MgrApiServer.java 우클릭 ➔ Run (실행)</pre>
   <!-- 10. 앱 설정 모듈 -->
   <div class="card"><div class="card-hdr"><div class="ico sel">GET</div><div><div class="card-title">10-1. GET /api/settings?userId=1 (앱 설정 조회)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"settingId": 1, "userId": 1, "startDay": "2026-08-25", "alertWeekday": "MON", "alertThreshold": 80}</pre></div></div></div>
   <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">10-2. POST /api/settings (앱 설정 등록/수정)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "startDay": "2026-08-25", "alertWeekday": "FRI", "alertThreshold": 90}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "앱 설정이 성공적으로 변경되었습니다."}</pre></div></div></div>
+
+  <!-- 11. 프로필 관리 모듈 -->
+  <div class="card"><div class="card-hdr"><div class="ico ins">POST</div><div><div class="card-title">11-1. POST /api/profile (프로필 사진 업데이트)</div></div></div><div class="card-body"><div class="cblock"><div class="ct">요청 Body (JSON)</div><pre>{"userId": 1, "profileImage": "data:image/png;base64,iVBORw0KGgoAAAANSU..."}</pre></div><div class="cblock"><div class="ct">응답 (HTTP 200 OK)</div><pre>{"success": true, "message": "프로필 사진이 성공적으로 변경되었습니다."}</pre></div></div></div>
 
 </div>
 
