@@ -2032,9 +2032,30 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- COMMUNITY ----------
     class CommunityPanel extends JPanel {
+        class RoomInfo {
+            String name;
+            int goal;
+            int reward;
+            int participants;
+            boolean isJoined;
+
+            public RoomInfo(String name, int goal, int reward, int participants) {
+                this.name = name;
+                this.goal = goal;
+                this.reward = reward;
+                this.participants = participants;
+                this.isJoined = false;
+            }
+
+            @Override
+            public String toString() {
+                return " " + name + "   | 목표 " + String.format("%,d", goal) + "원 | 보상 " + String.format("%,d", reward) + "P | 참여 " + participants + "명" + (isJoined ? " (참여중)" : "");
+            }
+        }
+        
         JTabbedPane tabs = new JTabbedPane();
         DefaultListModel<String> rankModel = new DefaultListModel<>();
-        DefaultListModel<String> challengeModel = new DefaultListModel<>();
+        DefaultListModel<RoomInfo> challengeModel = new DefaultListModel<>();
         
         // 🌟 칙칙한 리스트(feedModel) 삭제하고, 카드를 세로로 쌓을 새로운 컨테이너 장착!
         JPanel feedContainer = new JPanel();
@@ -2127,10 +2148,261 @@ public class GeojiTalchulApp extends JFrame {
             head.add(title,BorderLayout.WEST); head.add(create,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);
 
-            JList<String> list=new JList<>(challengeModel);
+            JList<RoomInfo> list=new JList<>(challengeModel);
             list.setFont(FONT);
-            list.setFixedCellHeight(72);
+            list.setFixedCellHeight(115);
+            list.setBackground(new Color(248, 250, 252));
+            list.setCellRenderer(new javax.swing.ListCellRenderer<RoomInfo>() {
+                @Override
+                public Component getListCellRendererComponent(JList<? extends RoomInfo> list, RoomInfo value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JPanel wrapper = new JPanel(new BorderLayout());
+                    wrapper.setBackground(list.getBackground());
+                    wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
+                    
+                    JPanel card = new JPanel(new BorderLayout()) {
+                        @Override
+                        protected void paintComponent(Graphics g) {
+                            Graphics2D g2 = (Graphics2D) g.create();
+                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                            if (isSelected) {
+                                g2.setColor(new Color(238, 245, 255));
+                            } else {
+                                g2.setColor(Color.WHITE);
+                            }
+                            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 24, 24);
+                            if (isSelected) {
+                                g2.setColor(new Color(180, 210, 255));
+                            } else {
+                                g2.setColor(new Color(225, 230, 235));
+                            }
+                            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 24, 24);
+                            g2.dispose();
+                        }
+                    };
+                    card.setOpaque(false);
+                    card.setBorder(new EmptyBorder(16, 20, 16, 20));
+                    
+                    JPanel textPanel = new JPanel(new BorderLayout(0, 10));
+                    textPanel.setOpaque(false);
+                    
+                    JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+                    titleRow.setOpaque(false);
+                    
+                    JLabel titleLbl = new JLabel(value.name);
+                    titleLbl.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+                    titleLbl.setForeground(TEXT);
+                    
+                    titleRow.add(titleLbl);
+                    
+                    JPanel tagsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+                    tagsRow.setOpaque(false);
+                    
+                    tagsRow.add(createModernTag("목표 " + String.format("%,d", value.goal) + "원", new Color(255, 240, 240), RED));
+                    tagsRow.add(createModernTag("보상 " + String.format("%,d", value.reward) + "P", new Color(255, 248, 235), ORANGE));
+                    tagsRow.add(createModernTag("참여 " + value.participants + "명", new Color(240, 248, 255), NAVY));
+                    
+                    textPanel.add(titleRow, BorderLayout.NORTH);
+                    textPanel.add(tagsRow, BorderLayout.CENTER);
+                    
+                    JPanel rightPanel = new JPanel(new BorderLayout());
+                    rightPanel.setOpaque(false);
+                    
+                    if (value.isJoined) {
+                        JLabel badge = new JLabel("참여중");
+                        badge.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
+                        badge.setForeground(new Color(30, 130, 70));
+                        
+                        JPanel badgePanel = new JPanel(new BorderLayout()) {
+                            @Override
+                            protected void paintComponent(Graphics g) {
+                                Graphics2D g2 = (Graphics2D) g.create();
+                                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                                g2.setColor(new Color(225, 245, 225));
+                                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
+                                g2.setColor(new Color(180, 230, 180));
+                                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
+                                g2.dispose();
+                            }
+                        };
+                        badgePanel.setOpaque(false);
+                        badgePanel.setBorder(new EmptyBorder(5, 12, 5, 12));
+                        badgePanel.add(badge, BorderLayout.CENTER);
+                        
+                        JPanel wrapper2 = new JPanel(new GridBagLayout());
+                        wrapper2.setOpaque(false);
+                        wrapper2.add(badgePanel);
+                        rightPanel.add(wrapper2, BorderLayout.CENTER);
+                    }
+                    
+                    card.add(textPanel, BorderLayout.CENTER);
+                    card.add(rightPanel, BorderLayout.EAST);
+                    
+                    wrapper.add(card, BorderLayout.CENTER);
+                    return wrapper;
+                }
+                
+                private JPanel createModernTag(String text, Color bg, Color fg) {
+                    JPanel p = new JPanel(new BorderLayout()) {
+                        @Override
+                        protected void paintComponent(Graphics g) {
+                            Graphics2D g2 = (Graphics2D) g.create();
+                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                            g2.setColor(bg);
+                            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+                            g2.dispose();
+                        }
+                    };
+                    p.setOpaque(false);
+                    p.setBorder(new EmptyBorder(4, 8, 4, 8));
+                    
+                    JLabel tLbl = new JLabel(text);
+                    tLbl.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
+                    tLbl.setForeground(fg);
+                    
+                    p.add(tLbl, BorderLayout.CENTER);
+                    return p;
+                }
+            });
+            list.addMouseListener(new MouseAdapter() {
+                public void mouseClicked(MouseEvent evt) {
+                    if (evt.getClickCount() == 2) {
+                        int index = list.locationToIndex(evt.getPoint());
+                        if (index >= 0) {
+                            RoomInfo room = challengeModel.getElementAt(index);
+                            showRoomDetails(room, list);
+                        }
+                    }
+                }
+            });
             p.add(new JScrollPane(list),BorderLayout.CENTER);
+            return p;
+        }
+
+        void showRoomDetails(RoomInfo room, JList<RoomInfo> list) {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "팀룸(챌린지룸) 정보", true);
+            d.setSize(420, 480);
+            d.setLocationRelativeTo(this);
+            d.setLayout(new BorderLayout());
+            d.getContentPane().setBackground(BG);
+            
+            JPanel card = roundedPanel(WHITE, 25);
+            card.setLayout(new BorderLayout(0, 20));
+            card.setBorder(new EmptyBorder(25, 25, 25, 25));
+            
+            JPanel header = new JPanel(new BorderLayout(5, 5));
+            header.setOpaque(false);
+            
+            JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            titlePanel.setOpaque(false);
+            JLabel titleIcon = new JLabel("🚩 ");
+            titleIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
+            JLabel titleText = new JLabel(room.name);
+            titleText.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
+            titleText.setForeground(GREEN_DARK);
+            titlePanel.add(titleIcon);
+            titlePanel.add(titleText);
+            
+            JPanel ownerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            ownerPanel.setOpaque(false);
+            JLabel ownerIcon = new JLabel("👑 ");
+            ownerIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
+            JLabel ownerText = new JLabel("방장: " + (room.isJoined ? userLabel.getText().replace(" 님", "") : "절약왕김씨"));
+            ownerText.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            ownerText.setForeground(MUTED);
+            ownerPanel.add(ownerIcon);
+            ownerPanel.add(ownerText);
+            
+            header.add(titlePanel, BorderLayout.NORTH);
+            header.add(ownerPanel, BorderLayout.CENTER);
+            
+            JPanel infoBox = new JPanel(new GridLayout(3, 1, 10, 15));
+            infoBox.setOpaque(true);
+            infoBox.setBackground(new Color(248, 250, 252));
+            infoBox.setBorder(new CompoundBorder(
+                BorderFactory.createLineBorder(new Color(230, 235, 240), 2, true),
+                new EmptyBorder(20, 20, 20, 20)
+            ));
+            
+            infoBox.add(createInfoRow("💰 ", "목표 금액", String.format("%,d", room.goal) + "원", RED));
+            infoBox.add(createInfoRow("✨ ", "보상 포인트", String.format("%,d", room.reward) + "P", ORANGE));
+            infoBox.add(createInfoRow("👥 ", "참여 인원", room.participants + "명", NAVY));
+            
+            JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            datePanel.setOpaque(false);
+            JLabel dateIcon = new JLabel("📅 ");
+            dateIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+            JLabel dateText = new JLabel("진행 기간: " + LocalDate.now() + " ~ " + LocalDate.now().plusDays(30));
+            dateText.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            dateText.setForeground(MUTED);
+            datePanel.add(dateIcon);
+            datePanel.add(dateText);
+            
+            JPanel center = new JPanel(new BorderLayout(0, 20));
+            center.setOpaque(false);
+            center.add(header, BorderLayout.NORTH);
+            center.add(infoBox, BorderLayout.CENTER);
+            center.add(datePanel, BorderLayout.SOUTH);
+            
+            card.add(center, BorderLayout.CENTER);
+            
+            JPanel bot = new JPanel(new BorderLayout());
+            bot.setOpaque(false);
+            bot.setBorder(new EmptyBorder(15, 0, 0, 0));
+            
+            JButton btn = primaryButton(room.isJoined ? "참여 취소" : "이 챌린지에 참여하기");
+            btn.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            btn.setPreferredSize(new Dimension(0, 48));
+            
+            if (room.isJoined) {
+                btn.setBackground(new Color(170, 180, 190));
+                btn.setText("참여 중인 챌린지입니다 (취소하기)");
+            }
+            
+            btn.addActionListener(e -> {
+                if (room.isJoined) {
+                    room.isJoined = false;
+                    room.participants--;
+                    JOptionPane.showMessageDialog(d, "참여가 취소되었습니다.", "안내", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    room.isJoined = true;
+                    room.participants++;
+                    JOptionPane.showMessageDialog(d, "팀룸에 성공적으로 참여했습니다!\n목표 달성을 응원합니다!", "환영합니다", JOptionPane.INFORMATION_MESSAGE);
+                }
+                list.repaint();
+                d.dispose();
+            });
+            bot.add(btn, BorderLayout.CENTER);
+            card.add(bot, BorderLayout.SOUTH);
+            
+            JPanel root = new JPanel(new BorderLayout());
+            root.setBackground(BG);
+            root.setBorder(new EmptyBorder(20, 20, 20, 20));
+            root.add(card, BorderLayout.CENTER);
+            
+            d.setContentPane(root);
+            d.setVisible(true);
+        }
+        
+        private JPanel createInfoRow(String emoji, String label, String value, Color valueColor) {
+            JPanel p = new JPanel(new BorderLayout());
+            p.setOpaque(false);
+            
+            JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+            leftPanel.setOpaque(false);
+            JLabel eLbl = new JLabel(emoji);
+            eLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
+            JLabel l = new JLabel(label);
+            l.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+            l.setForeground(TEXT);
+            leftPanel.add(eLbl);
+            leftPanel.add(l);
+            
+            JLabel v = new JLabel(value);
+            v.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            v.setForeground(valueColor);
+            
+            p.add(leftPanel, BorderLayout.WEST);
+            p.add(v, BorderLayout.EAST);
             return p;
         }
 
@@ -2173,7 +2445,15 @@ public class GeojiTalchulApp extends JFrame {
             p.add(new JLabel("보상 포인트")); p.add(reward);
             int r=JOptionPane.showConfirmDialog(this,p,"그룹 챌린지 생성",JOptionPane.OK_CANCEL_OPTION);
             if(r==JOptionPane.OK_OPTION){
-                challengeModel.addElement(" "+name.getText()+"   | 목표 "+goal.getText()+"원 | 보상 "+reward.getText()+"P | 참여 1명");
+                int g = 300000;
+                int rew = 1000;
+                try {
+                    g = Integer.parseInt(goal.getText().replace(",", ""));
+                    rew = Integer.parseInt(reward.getText().replace(",", ""));
+                } catch(Exception ex) {}
+                RoomInfo newRoom = new RoomInfo(name.getText(), g, rew, 1);
+                newRoom.isJoined = true;
+                challengeModel.addElement(newRoom);
                 state.points += 50;
                 refreshAll();
             }
@@ -2287,8 +2567,8 @@ public class GeojiTalchulApp extends JFrame {
             rankModel.addElement("   5위   절약초보         목표 600,000원   실제 610,000원   달성률 101.7%");
 
             if(challengeModel.isEmpty()){
-                challengeModel.addElement(" 30만원 식비 줄이기 | 목표 300,000원 | 보상 1,000P | 5명 참여");
-                challengeModel.addElement(" 교통비 절약전 | 목표 100,000원 | 보상 500P | 8명 참여");
+                challengeModel.addElement(new RoomInfo("30만원 식비 줄이기", 300000, 1000, 5));
+                challengeModel.addElement(new RoomInfo("교통비 절약전", 100000, 500, 8));
             }
             
             // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
@@ -2313,6 +2593,9 @@ public class GeojiTalchulApp extends JFrame {
             header.setOpaque(false);
             JLabel profilePic = new JLabel("😎"); 
             profilePic.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+            profilePic.setPreferredSize(new Dimension(36, 36));
+            profilePic.setHorizontalAlignment(SwingConstants.CENTER);
+            profilePic.setVerticalAlignment(SwingConstants.CENTER);
             JLabel nameLabel = new JLabel(author);
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             header.add(profilePic);
@@ -2323,10 +2606,70 @@ public class GeojiTalchulApp extends JFrame {
             
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
             actions.setOpaque(false);
-            JLabel likeBtn = new JLabel("❤️ 좋아요 " + likes);
-            JLabel commentBtn = new JLabel("💬 댓글 " + comments);
-            likeBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
-            commentBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            
+            int[] currentLikes = {likes};
+            boolean[] isLiked = {false};
+            
+            JPanel likeBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            likeBtn.setOpaque(false);
+            likeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            JLabel likeIcon = new JLabel("♡");
+            likeIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 18));
+            likeIcon.setPreferredSize(new Dimension(24, 24));
+            likeIcon.setHorizontalAlignment(SwingConstants.CENTER);
+            likeIcon.setVerticalAlignment(SwingConstants.CENTER);
+            JLabel likeText = new JLabel("좋아요 " + currentLikes[0]);
+            likeText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            likeBtn.add(likeIcon);
+            likeBtn.add(likeText);
+            
+            likeBtn.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (isLiked[0]) {
+                        isLiked[0] = false;
+                        currentLikes[0]--;
+                        likeIcon.setText("♡");
+                        likeIcon.setForeground(TEXT);
+                        likeText.setText("좋아요 " + currentLikes[0]);
+                        likeText.setForeground(TEXT);
+                    } else {
+                        isLiked[0] = true;
+                        currentLikes[0]++;
+                        likeIcon.setText("♥");
+                        likeIcon.setForeground(RED);
+                        likeText.setText("좋아요 " + currentLikes[0]);
+                        likeText.setForeground(RED);
+                    }
+                }
+            });
+
+            int[] currentComments = {comments};
+            JPanel commentBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            commentBtn.setOpaque(false);
+            commentBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            JLabel commentIcon = new JLabel("💬");
+            commentIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+            commentIcon.setPreferredSize(new Dimension(24, 24));
+            commentIcon.setHorizontalAlignment(SwingConstants.CENTER);
+            commentIcon.setVerticalAlignment(SwingConstants.CENTER);
+            JLabel commentText = new JLabel("댓글 " + currentComments[0]);
+            commentText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            commentBtn.add(commentIcon);
+            commentBtn.add(commentText);
+            
+            DefaultListModel<String> commentModel = new DefaultListModel<>();
+            for (int i = 0; i < comments; i++) {
+                commentModel.addElement("익명: 멋진 글이네요!");
+            }
+
+            commentBtn.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    showCommentDialog(author, commentModel, commentText, currentComments);
+                }
+            });
+
             actions.add(likeBtn);
             actions.add(commentBtn);
 
@@ -2360,6 +2703,56 @@ public class GeojiTalchulApp extends JFrame {
             }
 
             return card;
+        }
+
+        private void showCommentDialog(String author, DefaultListModel<String> model, JLabel btn, int[] count) {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), author + "님의 게시물 댓글", true);
+            d.setSize(350, 400);
+            d.setLocationRelativeTo(this);
+            d.setLayout(new BorderLayout());
+            
+            JList<String> list = new JList<>(model);
+            list.setFont(FONT);
+            
+            list.setCellRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    label.setBorder(BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(240, 240, 240)),
+                        new EmptyBorder(12, 12, 12, 12)
+                    ));
+                    return label;
+                }
+            });
+            
+            d.add(new JScrollPane(list), BorderLayout.CENTER);
+            
+            JPanel p = new JPanel(new BorderLayout(5, 5));
+            p.setBorder(new EmptyBorder(10, 10, 10, 10));
+            JTextField tf = new JTextField();
+            tf.setFont(FONT);
+            JButton b = new JButton("등록");
+            b.setFont(FONT_BOLD);
+            b.setBackground(GREEN_DARK);
+            b.setForeground(WHITE);
+            b.addActionListener(e -> {
+                if (!tf.getText().trim().isEmpty()) {
+                    model.addElement(userLabel.getText().replace(" 님", "") + ": " + tf.getText().trim());
+                    count[0]++;
+                    btn.setText("댓글 " + count[0]);
+                    tf.setText("");
+                    int lastIndex = model.getSize() - 1;
+                    if (lastIndex >= 0) {
+                        list.ensureIndexIsVisible(lastIndex);
+                    }
+                }
+            });
+            p.add(tf, BorderLayout.CENTER);
+            p.add(b, BorderLayout.EAST);
+            d.add(p, BorderLayout.SOUTH);
+            
+            d.setVisible(true);
         }
     }
 
