@@ -106,7 +106,43 @@ public class GeojiTalchulApp extends JFrame {
         refreshAll();
     }
 
-    // 🌟 여기서부터 복사해서 기존 buildLoginPanel, buildSignupPanel 덮어쓰기!
+    // 서버에서 내 지출 내역을 싹 긁어오는 메서드
+    void loadMyExpensesFromServer() {
+        new SwingWorker<JsonObject, Void>() {
+            @Override
+            protected JsonObject doInBackground() throws Exception {
+                // 내 아이디를 달아서 GET 요청 발사
+                return httpGet("http://localhost:8080/api/expenses?userId=" + currentUserId);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    JsonObject res = get();
+                    if (res != null && res.has("data")) {
+                        state.expenses.clear(); // 기존 거 싹 비우고
+                        
+                        // 서버에서 준 데이터(배열)를 하나씩 까서 앱 상태에 넣기
+                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
+                        for (com.google.gson.JsonElement el : arr) {
+                            JsonObject obj = el.getAsJsonObject();
+                            state.addExpense(
+                                obj.get("largeCategory").getAsString(),
+                                obj.get("mediumCategory").getAsString(),
+                                obj.get("smallCategory").getAsString(),
+                                obj.get("item").getAsString(),
+                                obj.get("amount").getAsLong(),
+                                LocalDate.parse(obj.get("expenseDate").getAsString())
+                            );
+                        }
+                        refreshAll(); // 데이터 다 받았으니 화면 싹 새로고침!
+                    }
+                } catch (Exception ex) {
+                    System.err.println("데이터 불러오기 실패: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
     
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
@@ -173,6 +209,8 @@ public class GeojiTalchulApp extends JFrame {
                         JsonObject res = get();
                         if (res != null && res.has("userId")) {
                             currentUserId = res.get("userId").getAsInt();
+                            // 로그인 성공 후 내 지출 내역 가져오기
+                            loadMyExpensesFromServer();
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
                             userLabel.setText(userName + " 님");
                             
@@ -2233,24 +2271,65 @@ public class GeojiTalchulApp extends JFrame {
         root.add(form,BorderLayout.CENTER);
 
         JButton save=primaryButton("지출 저장");
-        save.addActionListener(e->{
-            try{
-                long won=Long.parseLong(amount.getText().replace(",","").trim());
-                LocalDate d=LocalDate.parse(date.getText().trim());
-                String l=(String)large.getSelectedItem();
-                String m=(String)medium.getSelectedItem();
-                String s=small.getText().trim().isEmpty()?item.getText():small.getText();
-                if(s.trim().isEmpty()) throw new IllegalArgumentException("소분류를 입력하세요.");
+        // 서버로 지출 내역 쏘는 로직으로 교체
+        save.addActionListener(e -> {
+            try {
+                long won = Long.parseLong(amount.getText().replace(",", "").trim());
+                LocalDate d = LocalDate.parse(date.getText().trim());
+                String l = (String) large.getSelectedItem();
+                String m = (String) medium.getSelectedItem();
+                String s = small.getText().trim().isEmpty() ? item.getText() : small.getText();
+                if (s.trim().isEmpty()) throw new IllegalArgumentException("소분류를 입력하세요.");
+                String content = item.getText().trim();
 
-                state.addExpense(l,m,s,item.getText().trim(),won,d);
-                state.points += 20;
-                dlg.dispose();
-                refreshAll();
-                if(state.budgetUsage()>=1) JOptionPane.showMessageDialog(this,
-                        "지출이 저장되었습니다.\n\n⚠ 예산을 초과했습니다.","예산 경고",JOptionPane.WARNING_MESSAGE);
-                else JOptionPane.showMessageDialog(this,"지출이 저장되었습니다. +20P","저장 완료",JOptionPane.INFORMATION_MESSAGE);
-            }catch(Exception ex){
-                JOptionPane.showMessageDialog(dlg,ex.getMessage(),"입력 오류",JOptionPane.ERROR_MESSAGE);
+                // 서버 통신 중 버튼 막기 (연타 방지)
+                save.setEnabled(false);
+                save.setText("저장 중...");
+
+                new SwingWorker<JsonObject, Void>() {
+                    @Override
+                    protected JsonObject doInBackground() throws Exception {
+                        // 백엔드 API 규격에 맞춰 JSON 조립
+                        JsonObject body = new JsonObject();
+                        body.addProperty("userId", currentUserId); // 현재 로그인한 내 아이디
+                        body.addProperty("largeCategory", l);
+                        body.addProperty("mediumCategory", m);
+                        body.addProperty("smallCategory", s);
+                        body.addProperty("item", content);
+                        body.addProperty("amount", won);
+                        body.addProperty("expenseDate", d.toString());
+                        
+                        // 서버로 POST 발사!
+                        return httpPost("http://localhost:8080/api/expenses", body.toString());
+                    }
+
+                    @Override
+                    protected void done() {
+                        save.setEnabled(true);
+                        save.setText("지출 저장");
+                        try {
+                            JsonObject res = get();
+                            if (res != null) {
+                                // 일단 화면(상태)에도 추가해서 즉시 반영되게 함
+                                state.addExpense(l, m, s, content, won, d);
+                                state.points += 20;
+                                dlg.dispose();
+                                refreshAll();
+                                
+                                if (state.budgetUsage() >= 1) {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다.\n\n⚠ 예산을 초과했습니다.", "예산 경고", JOptionPane.WARNING_MESSAGE);
+                                } else {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다! +20P", "저장 완료", JOptionPane.INFORMATION_MESSAGE);
+                                }
+                            }
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(dlg, "서버 저장 실패: " + ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                }.execute();
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "입력 오류", JOptionPane.ERROR_MESSAGE);
             }
         });
         JButton cancel=new JButton("취소");
