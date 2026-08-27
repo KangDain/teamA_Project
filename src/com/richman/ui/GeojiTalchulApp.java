@@ -179,6 +179,85 @@ public class GeojiTalchulApp extends JFrame {
         refreshAll();
     }
 
+    // 서버에서 내 지출 내역을 싹 긁어오는 메서드
+    void loadMyExpensesFromServer() {
+        new SwingWorker<JsonObject, Void>() {
+            @Override
+            protected JsonObject doInBackground() throws Exception {
+                // 내 아이디를 달아서 GET 요청 발사
+                return httpGet("http://localhost:8080/api/expenses?userId=" + currentUserId);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    JsonObject res = get();
+                    if (res != null && res.has("data")) {
+                        state.expenses.clear(); // 기존 거 싹 비우고
+                        
+                        // 서버에서 준 데이터(배열)를 하나씩 까서 앱 상태에 넣기
+                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
+                        for (com.google.gson.JsonElement el : arr) {
+                            JsonObject obj = el.getAsJsonObject();
+                            state.addExpense(
+                                obj.get("largeCategory").getAsString(),
+                                obj.get("mediumCategory").getAsString(),
+                                obj.get("smallCategory").getAsString(),
+                                obj.get("item").getAsString(),
+                                obj.get("amount").getAsLong(),
+                                LocalDate.parse(obj.get("expenseDate").getAsString())
+                            );
+                        }
+                        refreshAll(); // 데이터 다 받았으니 화면 싹 새로고침!
+                    }
+                } catch (Exception ex) {
+                    System.err.println("데이터 불러오기 실패: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+    // 서버에서 커뮤니티 피드 싹 긁어오기
+    void loadCommunityFeed() {
+        new SwingWorker<JsonObject, Void>() {
+            @Override
+            protected JsonObject doInBackground() throws Exception {
+                return httpGet("http://localhost:8080/api/posts");
+            }
+            @Override
+            protected void done() {
+                try {
+                    JsonObject res = get();
+                    if (res != null && res.has("data")) {
+                        communityPanel.feedContainer.removeAll(); // 가짜 데이터 밀어버림
+                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
+                        for (com.google.gson.JsonElement el : arr) {
+                            JsonObject obj = el.getAsJsonObject();
+                            String author = obj.get("author").getAsString();
+                            String content = obj.get("content").getAsString();
+                            int likes = obj.get("likes").getAsInt();
+                            int comments = obj.get("comments").getAsInt();
+                            String base64Img = obj.has("image") && !obj.get("image").isJsonNull() ? obj.get("image").getAsString() : "";
+                            
+                            ImageIcon imgIcon = null;
+                            if (!base64Img.isEmpty()) {
+                                byte[] bytes = java.util.Base64.getDecoder().decode(base64Img);
+                                imgIcon = new ImageIcon(bytes);
+                            }
+                            // 화면에 진짜 카드 꽂기
+                            communityPanel.feedContainer.add(communityPanel.buildInstaCard(author, content, imgIcon, likes, comments));
+                            communityPanel.feedContainer.add(Box.createVerticalStrut(20));
+                        }
+                        communityPanel.feedContainer.revalidate();
+                        communityPanel.feedContainer.repaint();
+                    }
+                } catch (Exception ex) {
+                    System.err.println("피드 불러오기 실패: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG);
@@ -244,6 +323,11 @@ public class GeojiTalchulApp extends JFrame {
                         JsonObject res = get();
                         if (res != null && res.has("userId")) {
                             currentUserId = res.get("userId").getAsInt();
+
+                            // 로그인 성공 후 내 지출 내역 가져오기
+                            loadMyExpensesFromServer();
+                            loadCommunityFeed();
+
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
                             userLabel.setText(userName + " 님");
                             
@@ -322,8 +406,6 @@ public class GeojiTalchulApp extends JFrame {
         JTextField signupJobField   = new JTextField(15);
         JTextField signupAddrField  = new JTextField(15);
         JTextField signupIncomeField= new JTextField(15);
-        JTextField signupProfilePicField = new JTextField(15);
-        signupProfilePicField.setEditable(false);
 
         addFormRow(form, g, r++, "아이디", signupIdField);
         addFormRow(form, g, r++, "비밀번호", signupPwField);
@@ -343,19 +425,6 @@ public class GeojiTalchulApp extends JFrame {
         addFormRow(form, g, r++, "주소", signupAddrField);
         addFormRow(form, g, r++, "월 수입(원)", signupIncomeField);
 
-        JPanel profilePicBox = new JPanel(new BorderLayout(5, 0));
-        profilePicBox.setOpaque(false);
-        profilePicBox.add(signupProfilePicField, BorderLayout.CENTER);
-        JButton profilePicBtn = flatButton("사진 선택");
-        profilePicBtn.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            if (chooser.showOpenDialog(GeojiTalchulApp.this) == JFileChooser.APPROVE_OPTION) {
-                signupProfilePicField.setText(chooser.getSelectedFile().getAbsolutePath());
-            }
-        });
-        profilePicBox.add(profilePicBtn, BorderLayout.EAST);
-        addFormRow(form, g, r++, "프로필 사진", profilePicBox);
-
         card.add(form, BorderLayout.CENTER);
 
         // 하단 버튼 영역
@@ -370,7 +439,6 @@ public class GeojiTalchulApp extends JFrame {
             signupNameField.setText(""); signupBirthField.setText("");
             signupPhoneField.setText(""); signupJobField.setText("");
             signupAddrField.setText(""); signupIncomeField.setText("");
-            signupProfilePicField.setText("");
             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
         });
 
@@ -386,7 +454,6 @@ public class GeojiTalchulApp extends JFrame {
             String job      = signupJobField.getText().trim();
             String addr     = signupAddrField.getText().trim();
             String incomeStr= signupIncomeField.getText().trim();
-            String profilePic = signupProfilePicField.getText().trim();
 
             // 2. 기본 유효성 검사
             if (loginId.isEmpty() || password.isEmpty() || userName.isEmpty()) {
@@ -442,9 +509,6 @@ public class GeojiTalchulApp extends JFrame {
                     body.addProperty("job", job);
                     body.addProperty("address", addr);
                     body.addProperty("income", finalIncome);
-                    if (!profilePic.isEmpty()) {
-                        body.addProperty("profileImage", profilePic);
-                    }
 
                     JsonObject res = httpPost("http://localhost:8080/api/users/register", body.toString());
                     if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
@@ -466,7 +530,6 @@ public class GeojiTalchulApp extends JFrame {
                             signupNameField.setText(""); signupBirthField.setText("");
                             signupPhoneField.setText(""); signupJobField.setText("");
                             signupAddrField.setText(""); signupIncomeField.setText("");
-                            signupProfilePicField.setText("");
                             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
                         } else {
                             JOptionPane.showMessageDialog(GeojiTalchulApp.this, errorMsg, "회원가입 실패", JOptionPane.ERROR_MESSAGE);
@@ -885,25 +948,38 @@ public class GeojiTalchulApp extends JFrame {
         cancel.setFocusPainted(false);
         JButton save = primaryButton("설정 저장");
         cancel.addActionListener(e -> dlg.dispose());
+        // 예산 설정하면 서버로
         save.addActionListener(e -> {
             String raw = budgetField.getText().replace(",", "").trim();
             try {
                 long newBudget = Long.parseLong(raw);
                 if (newBudget <= 0) throw new NumberFormatException();
-                state.budget = newBudget;
-                dlg.dispose();
-                refreshAll();
-                JOptionPane.showMessageDialog(this,
-                        "목표 예산이 " + won(newBudget) + "으로 설정되었습니다.",
-                        "설정 완료", JOptionPane.INFORMATION_MESSAGE);
+                
+                save.setEnabled(false);
+                save.setText("저장 중...");
+                new SwingWorker<JsonObject, Void>() {
+                    @Override
+                    protected JsonObject doInBackground() throws Exception {
+                        JsonObject body = new JsonObject();
+                        body.addProperty("userId", currentUserId);
+                        body.addProperty("budgetAmount", newBudget);
+                        return httpPost("http://localhost:8080/api/budgets", body.toString()); // 예산 업데이트 API
+                    }
+                    @Override
+                    protected void done() {
+                        state.budget = newBudget;
+                        dlg.dispose();
+                        refreshAll();
+                        JOptionPane.showMessageDialog(GeojiTalchulApp.this, "목표 예산이 " + won(newBudget) + "으로 설정되었습니다.", "설정 완료", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                }.execute();
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(dlg,
-                        "목표 예산은 0보다 큰 숫자로 입력해주세요.",
-                        "입력 오류", JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(dlg, "목표 예산은 0보다 큰 숫자로 입력해주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
                 budgetField.requestFocus();
                 budgetField.selectAll();
             }
         });
+
         bottom.add(cancel);
         bottom.add(save);
         root.add(bottom, BorderLayout.SOUTH);
@@ -1225,9 +1301,10 @@ public class GeojiTalchulApp extends JFrame {
             rightBox.setOpaque(false);
             rightBox.setPreferredSize(new Dimension(240, 235));
 
-            // 🌟 1. 말풍선 패널 만들기 (기본 상태는 숨김)
-            SpeechBubblePanel bubblePanel = new SpeechBubblePanel(WHITE, new Color(197, 222, 218), 22);
+            // 🌟 1. 말풍선 둥근 패널 만들기 (기본 상태는 숨김)
+            JPanel bubblePanel = new RoundedPanel(WHITE, 30);
             bubblePanel.setLayout(new BorderLayout());
+            bubblePanel.setBorder(new EmptyBorder(10, 18, 10, 18)); // 말풍선 안쪽 빵빵한 여백
             JLabel bubbleText = new JLabel("...");
             bubbleText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
             bubbleText.setForeground(TEXT);
@@ -1235,11 +1312,11 @@ public class GeojiTalchulApp extends JFrame {
             bubblePanel.add(bubbleText, BorderLayout.CENTER);
             bubblePanel.setVisible(false);
 
-            // 🌟 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
-            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 8));
+            // 🌟 [수정된 부분] 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
+            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
             bubbleWrapper.setOpaque(false);
-            // 꼬리 포함 높이 75px 빈 공간 유지
-            bubbleWrapper.setPreferredSize(new Dimension(240, 75));
+            // 🌟 이 줄을 추가해서 말풍선이 숨겨져 있어도 무조건 높이 60px의 빈 공간을 유지하게 만듭니다.
+            bubbleWrapper.setPreferredSize(new Dimension(240, 60)); 
             bubbleWrapper.add(bubblePanel);
             rightBox.add(bubbleWrapper, BorderLayout.NORTH);
 
@@ -1257,8 +1334,7 @@ public class GeojiTalchulApp extends JFrame {
                 "피들스정",
                 "숨만 쉬어도 돈이 나가네...",
                 "노르톨트 후버",
-                "이러다간 진짜 길바닥 나앉아!",
-                "강팬치"
+                "이러다간 진짜 길바닥 나앉아!"
             };
 
             // 말풍선 사라지는 타이머를 담을 변수
@@ -1637,11 +1713,25 @@ public class GeojiTalchulApp extends JFrame {
                         new Color(240, 190, 190), 1, true
                 ));
 
+                // 백엔드 서버에 DELETE 보내기
                 del.addActionListener(e -> {
-                    state.expenses.remove(x);
-                    dlg.dispose();
-                    refreshAll();
-                    showDateDetail(date);
+                    int res = JOptionPane.showConfirmDialog(dlg, "정말 삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
+                    if (res == JOptionPane.YES_OPTION) {
+                        new SwingWorker<JsonObject, Void>() {
+                            @Override
+                            protected JsonObject doInBackground() throws Exception {
+                                // 해당 지출의 고유 ID(x.id)를 서버로 보내서 삭제
+                                return httpDelete("http://localhost:8080/api/expenses?id=" + x.id);
+                            }
+                            @Override
+                            protected void done() {
+                                state.expenses.remove(x); // 화면에서도 삭제
+                                dlg.dispose();
+                                refreshAll();
+                                showDateDetail(date); // 창 새로고침
+                            }
+                        }.execute();
+                    }
                 });
 
                 // 오른쪽 영역
@@ -1934,26 +2024,25 @@ public class GeojiTalchulApp extends JFrame {
             double start = 0;
             int i = 0;
             
-            double hoveredStart = 0;
-            double hoveredAngle = 0;
-            Color hoveredColor = null;
-
+            // 🌟 지출 1위 카테고리를 찾기 위한 변수 추가
+            String maxCategory = "";
+            long maxVal = -1;
+            
             for (Map.Entry<String,Long> en : map.entrySet()) {
                 double angle = 360.0 * en.getValue() / total;
                 Arc2D.Double arc = new Arc2D.Double(x, y, diameter, diameter, start, angle, Arc2D.PIE);
                 
-                Color c = colors[i++ % colors.length];
-                g2.setColor(c);
+                g2.setColor(colors[i++ % colors.length]);
                 g2.fill(arc);
-                
-                if (en.getKey().equals(hoveredCategory)) {
-                    hoveredStart = start;
-                    hoveredAngle = angle;
-                    hoveredColor = c;
-                }
                 
                 slices.add(new SliceInfo(arc, en.getKey()));
                 start += angle;
+                
+                // 🌟 파이 조각을 그리면서 최댓값과 그 카테고리 이름 저장!
+                if (en.getValue() > maxVal) {
+                    maxVal = en.getValue();
+                    maxCategory = en.getKey();
+                }
             }
 
             int thickness = 25; 
@@ -1965,8 +2054,8 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fill(innerHole);
 
-            // 🎯 중앙 텍스트는 항상 '대분류'로 고정
-            String centerTitle = mode;
+            // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
+            String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
@@ -1975,41 +2064,6 @@ public class GeojiTalchulApp extends JFrame {
             int textX = x + (diameter - fm.stringWidth(centerTitle)) / 2;
             int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent();
             g2.drawString(centerTitle, textX, textY);
-
-            // 호버된 요소에 선과 텍스트 그리기
-            if (hoveredCategory != null && hoveredColor != null) {
-                double midAngle = hoveredStart + hoveredAngle / 2.0;
-                double rad = Math.toRadians(-midAngle); // Arc2D is counter-clockwise
-                
-                int cx = x + diameter / 2;
-                int cy = y + diameter / 2;
-                
-                // 선 시작점 (파이 차트 외곽선에서 조금 바깥)
-                int lineStartX = cx + (int)(Math.cos(rad) * (diameter / 2 + 2));
-                int lineStartY = cy + (int)(Math.sin(rad) * (diameter / 2 + 2));
-                
-                // 선 끝점
-                int lineEndX = cx + (int)(Math.cos(rad) * (diameter / 2 + 15));
-                int lineEndY = cy + (int)(Math.sin(rad) * (diameter / 2 + 15));
-                
-                g2.setColor(hoveredColor);
-                g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2.drawLine(lineStartX, lineStartY, lineEndX, lineEndY);
-                
-                // 텍스트 위치 계산
-                g2.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
-                FontMetrics sm = g2.getFontMetrics();
-                
-                int labelX;
-                if (Math.cos(rad) >= 0) {
-                    labelX = lineEndX + 5;
-                } else {
-                    labelX = lineEndX - sm.stringWidth(hoveredCategory) - 5;
-                }
-                int labelY = lineEndY + (sm.getAscent() / 2);
-                
-                g2.drawString(hoveredCategory, labelX, labelY);
-            }
 
             // 하단 범례(Legend) 2열 배치
             int legendTop = y + diameter + 25; 
@@ -2143,30 +2197,9 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- COMMUNITY ----------
     class CommunityPanel extends JPanel {
-        class RoomInfo {
-            String name;
-            int goal;
-            int reward;
-            int participants;
-            boolean isJoined;
-
-            public RoomInfo(String name, int goal, int reward, int participants) {
-                this.name = name;
-                this.goal = goal;
-                this.reward = reward;
-                this.participants = participants;
-                this.isJoined = false;
-            }
-
-            @Override
-            public String toString() {
-                return " " + name + "   | 목표 " + String.format("%,d", goal) + "원 | 보상 " + String.format("%,d", reward) + "P | 참여 " + participants + "명" + (isJoined ? " (참여중)" : "");
-            }
-        }
-        
         JTabbedPane tabs = new JTabbedPane();
         DefaultListModel<String> rankModel = new DefaultListModel<>();
-        DefaultListModel<RoomInfo> challengeModel = new DefaultListModel<>();
+        DefaultListModel<String> challengeModel = new DefaultListModel<>();
         
         // 🌟 칙칙한 리스트(feedModel) 삭제하고, 카드를 세로로 쌓을 새로운 컨테이너 장착!
         JPanel feedContainer = new JPanel();
@@ -2259,265 +2292,14 @@ public class GeojiTalchulApp extends JFrame {
             head.add(title,BorderLayout.WEST); head.add(create,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);
 
-            JList<RoomInfo> list=new JList<>(challengeModel);
+            JList<String> list=new JList<>(challengeModel);
             list.setFont(FONT);
-            list.setFixedCellHeight(115);
-            list.setBackground(new Color(248, 250, 252));
-            list.setCellRenderer(new javax.swing.ListCellRenderer<RoomInfo>() {
-                @Override
-                public Component getListCellRendererComponent(JList<? extends RoomInfo> list, RoomInfo value, int index, boolean isSelected, boolean cellHasFocus) {
-                    JPanel wrapper = new JPanel(new BorderLayout());
-                    wrapper.setBackground(list.getBackground());
-                    wrapper.setBorder(new EmptyBorder(8, 12, 8, 12));
-                    
-                    JPanel card = new JPanel(new BorderLayout()) {
-                        @Override
-                        protected void paintComponent(Graphics g) {
-                            Graphics2D g2 = (Graphics2D) g.create();
-                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                            if (isSelected) {
-                                g2.setColor(new Color(238, 245, 255));
-                            } else {
-                                g2.setColor(Color.WHITE);
-                            }
-                            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 24, 24);
-                            if (isSelected) {
-                                g2.setColor(new Color(180, 210, 255));
-                            } else {
-                                g2.setColor(new Color(225, 230, 235));
-                            }
-                            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 24, 24);
-                            g2.dispose();
-                        }
-                    };
-                    card.setOpaque(false);
-                    card.setBorder(new EmptyBorder(16, 20, 16, 20));
-                    
-                    JPanel textPanel = new JPanel(new BorderLayout(0, 10));
-                    textPanel.setOpaque(false);
-                    
-                    JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-                    titleRow.setOpaque(false);
-                    
-                    JLabel titleLbl = new JLabel(value.name);
-                    titleLbl.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
-                    titleLbl.setForeground(TEXT);
-                    
-                    titleRow.add(titleLbl);
-                    
-                    JPanel tagsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-                    tagsRow.setOpaque(false);
-                    
-                    tagsRow.add(createModernTag("목표 " + String.format("%,d", value.goal) + "원", new Color(255, 240, 240), RED));
-                    tagsRow.add(createModernTag("보상 " + String.format("%,d", value.reward) + "P", new Color(255, 248, 235), ORANGE));
-                    tagsRow.add(createModernTag("참여 " + value.participants + "명", new Color(240, 248, 255), NAVY));
-                    
-                    textPanel.add(titleRow, BorderLayout.NORTH);
-                    textPanel.add(tagsRow, BorderLayout.CENTER);
-                    
-                    JPanel rightPanel = new JPanel(new BorderLayout());
-                    rightPanel.setOpaque(false);
-                    
-                    if (value.isJoined) {
-                        JLabel badge = new JLabel("참여중");
-                        badge.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-                        badge.setForeground(new Color(30, 130, 70));
-                        
-                        JPanel badgePanel = new JPanel(new BorderLayout()) {
-                            @Override
-                            protected void paintComponent(Graphics g) {
-                                Graphics2D g2 = (Graphics2D) g.create();
-                                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                                g2.setColor(new Color(225, 245, 225));
-                                g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
-                                g2.setColor(new Color(180, 230, 180));
-                                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 14, 14);
-                                g2.dispose();
-                            }
-                        };
-                        badgePanel.setOpaque(false);
-                        badgePanel.setBorder(new EmptyBorder(5, 12, 5, 12));
-                        badgePanel.add(badge, BorderLayout.CENTER);
-                        
-                        JPanel wrapper2 = new JPanel(new GridBagLayout());
-                        wrapper2.setOpaque(false);
-                        wrapper2.add(badgePanel);
-                        rightPanel.add(wrapper2, BorderLayout.CENTER);
-                    }
-                    
-                    card.add(textPanel, BorderLayout.CENTER);
-                    card.add(rightPanel, BorderLayout.EAST);
-                    
-                    wrapper.add(card, BorderLayout.CENTER);
-                    return wrapper;
-                }
-                
-                private JPanel createModernTag(String text, Color bg, Color fg) {
-                    JPanel p = new JPanel(new BorderLayout()) {
-                        @Override
-                        protected void paintComponent(Graphics g) {
-                            Graphics2D g2 = (Graphics2D) g.create();
-                            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                            g2.setColor(bg);
-                            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
-                            g2.dispose();
-                        }
-                    };
-                    p.setOpaque(false);
-                    p.setBorder(new EmptyBorder(4, 8, 4, 8));
-                    
-                    JLabel tLbl = new JLabel(text);
-                    tLbl.setFont(new Font("Malgun Gothic", Font.BOLD, 12));
-                    tLbl.setForeground(fg);
-                    
-                    p.add(tLbl, BorderLayout.CENTER);
-                    return p;
-                }
-            });
-            list.addMouseListener(new MouseAdapter() {
-                public void mouseClicked(MouseEvent evt) {
-                    if (evt.getClickCount() == 2) {
-                        int index = list.locationToIndex(evt.getPoint());
-                        if (index >= 0) {
-                            RoomInfo room = challengeModel.getElementAt(index);
-                            showRoomDetails(room, list);
-                        }
-                    }
-                }
-            });
+            list.setFixedCellHeight(72);
             p.add(new JScrollPane(list),BorderLayout.CENTER);
             return p;
         }
 
-        void showRoomDetails(RoomInfo room, JList<RoomInfo> list) {
-            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "팀룸(챌린지룸) 정보", true);
-            d.setSize(420, 480);
-            d.setLocationRelativeTo(this);
-            d.setLayout(new BorderLayout());
-            d.getContentPane().setBackground(BG);
-            
-            JPanel card = roundedPanel(WHITE, 25);
-            card.setLayout(new BorderLayout(0, 20));
-            card.setBorder(new EmptyBorder(25, 25, 25, 25));
-            
-            JPanel header = new JPanel(new BorderLayout(5, 5));
-            header.setOpaque(false);
-            
-            JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            titlePanel.setOpaque(false);
-            JLabel titleIcon = new JLabel("🚩 ");
-            titleIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 22));
-            JLabel titleText = new JLabel(room.name);
-            titleText.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
-            titleText.setForeground(GREEN_DARK);
-            titlePanel.add(titleIcon);
-            titlePanel.add(titleText);
-            
-            JPanel ownerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            ownerPanel.setOpaque(false);
-            JLabel ownerIcon = new JLabel("👑 ");
-            ownerIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 14));
-            JLabel ownerText = new JLabel("방장: " + (room.isJoined ? userLabel.getText().replace(" 님", "") : "절약왕김씨"));
-            ownerText.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-            ownerText.setForeground(MUTED);
-            ownerPanel.add(ownerIcon);
-            ownerPanel.add(ownerText);
-            
-            header.add(titlePanel, BorderLayout.NORTH);
-            header.add(ownerPanel, BorderLayout.CENTER);
-            
-            JPanel infoBox = new JPanel(new GridLayout(3, 1, 10, 15));
-            infoBox.setOpaque(true);
-            infoBox.setBackground(new Color(248, 250, 252));
-            infoBox.setBorder(new CompoundBorder(
-                BorderFactory.createLineBorder(new Color(230, 235, 240), 2, true),
-                new EmptyBorder(20, 20, 20, 20)
-            ));
-            
-            infoBox.add(createInfoRow("💰 ", "목표 금액", String.format("%,d", room.goal) + "원", RED));
-            infoBox.add(createInfoRow("✨ ", "보상 포인트", String.format("%,d", room.reward) + "P", ORANGE));
-            infoBox.add(createInfoRow("👥 ", "참여 인원", room.participants + "명", NAVY));
-            
-            JPanel datePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-            datePanel.setOpaque(false);
-            JLabel dateIcon = new JLabel("📅 ");
-            dateIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
-            JLabel dateText = new JLabel("진행 기간: " + LocalDate.now() + " ~ " + LocalDate.now().plusDays(30));
-            dateText.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
-            dateText.setForeground(MUTED);
-            datePanel.add(dateIcon);
-            datePanel.add(dateText);
-            
-            JPanel center = new JPanel(new BorderLayout(0, 20));
-            center.setOpaque(false);
-            center.add(header, BorderLayout.NORTH);
-            center.add(infoBox, BorderLayout.CENTER);
-            center.add(datePanel, BorderLayout.SOUTH);
-            
-            card.add(center, BorderLayout.CENTER);
-            
-            JPanel bot = new JPanel(new BorderLayout());
-            bot.setOpaque(false);
-            bot.setBorder(new EmptyBorder(15, 0, 0, 0));
-            
-            JButton btn = primaryButton(room.isJoined ? "참여 취소" : "이 챌린지에 참여하기");
-            btn.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
-            btn.setPreferredSize(new Dimension(0, 48));
-            
-            if (room.isJoined) {
-                btn.setBackground(new Color(170, 180, 190));
-                btn.setText("참여 중인 챌린지입니다 (취소하기)");
-            }
-            
-            btn.addActionListener(e -> {
-                if (room.isJoined) {
-                    room.isJoined = false;
-                    room.participants--;
-                    JOptionPane.showMessageDialog(d, "참여가 취소되었습니다.", "안내", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    room.isJoined = true;
-                    room.participants++;
-                    JOptionPane.showMessageDialog(d, "팀룸에 성공적으로 참여했습니다!\n목표 달성을 응원합니다!", "환영합니다", JOptionPane.INFORMATION_MESSAGE);
-                }
-                list.repaint();
-                d.dispose();
-            });
-            bot.add(btn, BorderLayout.CENTER);
-            card.add(bot, BorderLayout.SOUTH);
-            
-            JPanel root = new JPanel(new BorderLayout());
-            root.setBackground(BG);
-            root.setBorder(new EmptyBorder(20, 20, 20, 20));
-            root.add(card, BorderLayout.CENTER);
-            
-            d.setContentPane(root);
-            d.setVisible(true);
-        }
-        
-        private JPanel createInfoRow(String emoji, String label, String value, Color valueColor) {
-            JPanel p = new JPanel(new BorderLayout());
-            p.setOpaque(false);
-            
-            JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-            leftPanel.setOpaque(false);
-            JLabel eLbl = new JLabel(emoji);
-            eLbl.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 15));
-            JLabel l = new JLabel(label);
-            l.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
-            l.setForeground(TEXT);
-            leftPanel.add(eLbl);
-            leftPanel.add(l);
-            
-            JLabel v = new JLabel(value);
-            v.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
-            v.setForeground(valueColor);
-            
-            p.add(leftPanel, BorderLayout.WEST);
-            p.add(v, BorderLayout.EAST);
-            return p;
-        }
-
-        // 🌟 1. 피드 화면을 인스타 갬성으로 변경!
+        // 피드 화면
         JPanel buildFeed() {
             JPanel p=roundedPanel(WHITE,18);
             p.setLayout(new BorderLayout(10,10));
@@ -2527,20 +2309,19 @@ public class GeojiTalchulApp extends JFrame {
             title.setFont(FONT_TITLE);
             JButton write=primaryButton("+ 글쓰기");
             
-            // 🌟 촌스러운 글쓰기 창 대신, 새로 만든 팝업 연결!
+            // 팝업 연결
             write.addActionListener(e->showWritePostDialog()); 
             
             head.add(title,BorderLayout.WEST); head.add(write,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);
             
-            // 🌟 세로로 카드가 차곡차곡 쌓이도록 설정
             feedContainer.setLayout(new BoxLayout(feedContainer, BoxLayout.Y_AXIS));
             feedContainer.setBackground(WHITE);
             feedContainer.setBorder(new EmptyBorder(10, 10, 10, 10));
 
             JScrollPane scroll = new JScrollPane(feedContainer);
             scroll.setBorder(null);
-            scroll.getVerticalScrollBar().setUnitIncrement(16); // 마우스 휠 스크롤 부드럽게!
+            scroll.getVerticalScrollBar().setUnitIncrement(16); 
             
             p.add(scroll,BorderLayout.CENTER);
             return p;
@@ -2556,21 +2337,13 @@ public class GeojiTalchulApp extends JFrame {
             p.add(new JLabel("보상 포인트")); p.add(reward);
             int r=JOptionPane.showConfirmDialog(this,p,"그룹 챌린지 생성",JOptionPane.OK_CANCEL_OPTION);
             if(r==JOptionPane.OK_OPTION){
-                int g = 300000;
-                int rew = 1000;
-                try {
-                    g = Integer.parseInt(goal.getText().replace(",", ""));
-                    rew = Integer.parseInt(reward.getText().replace(",", ""));
-                } catch(Exception ex) {}
-                RoomInfo newRoom = new RoomInfo(name.getText(), g, rew, 1);
-                newRoom.isJoined = true;
-                challengeModel.addElement(newRoom);
+                challengeModel.addElement(" "+name.getText()+"   | 목표 "+goal.getText()+"원 | 보상 "+reward.getText()+"P | 참여 1명");
                 state.points += 50;
                 refreshAll();
             }
         }
 
-        // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업!
+        // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업 (완벽 복구!)
         private void showWritePostDialog() {
             JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "새 게시물 작성", true);
             dialog.setSize(450, 420);
@@ -2588,7 +2361,7 @@ public class GeojiTalchulApp extends JFrame {
             centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
 
             final ImageIcon[] selectedImage = {null};
-            final String[] selectedBase64 = {null}; // 추후 백엔드 연동용 Base64 데이터
+            final String[] selectedBase64 = {null}; 
 
             JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
             attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
@@ -2644,13 +2417,11 @@ public class GeojiTalchulApp extends JFrame {
             submitBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
             submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             
-            // 글 올리면 즉시 피드 맨 위에 카드 꽂아버리기!
             submitBtn.addActionListener(e -> {
                 String text = textArea.getText().trim();
                 boolean isDefaultText = text.equals("오늘의 지출 내역이나 다짐을 공유해 보세요!");
                 String postText = isDefaultText ? "" : text;
                 
-                // 내용이 있거나, 사진이 첨부되었거나 둘 중 하나면 통과!
                 if(!postText.isEmpty() || selectedImage[0] != null) {
                     feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
                     feedContainer.add(Box.createVerticalStrut(20), 1);
@@ -2678,8 +2449,8 @@ public class GeojiTalchulApp extends JFrame {
             rankModel.addElement("   5위   절약초보         목표 600,000원   실제 610,000원   달성률 101.7%");
 
             if(challengeModel.isEmpty()){
-                challengeModel.addElement(new RoomInfo("30만원 식비 줄이기", 300000, 1000, 5));
-                challengeModel.addElement(new RoomInfo("교통비 절약전", 100000, 500, 8));
+                challengeModel.addElement(" 30만원 식비 줄이기 | 목표 300,000원 | 보상 1,000P | 5명 참여");
+                challengeModel.addElement(" 교통비 절약전 | 목표 100,000원 | 보상 500P | 8명 참여");
             }
             
             // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
@@ -2692,12 +2463,11 @@ public class GeojiTalchulApp extends JFrame {
             feedContainer.repaint();
         }
 
-        // 🌟 4. 게시물 하나를 인스타 갬성 카드로 포장해주는 메서드 (사진 유무 분기 처리)
+        // 🌟 4. 댓글 기능 완벽하게 적출된 인스타 카드!
         private JPanel buildInstaCard(String author, String text, ImageIcon image, int likes, int comments) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
-            // 사진이 없으면 높이를 줄임
             card.setMaximumSize(new Dimension(800, image != null ? 380 : 180)); 
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
@@ -2718,6 +2488,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
             actions.setOpaque(false);
             
+            // --- 좋아요 버튼 ---
             int[] currentLikes = {likes};
             boolean[] isLiked = {false};
             
@@ -2755,7 +2526,7 @@ public class GeojiTalchulApp extends JFrame {
                 }
             });
 
-            actions.add(likeBtn);
+            actions.add(likeBtn); // 🌟 댓글 버튼(commentBtn)은 추가 안 하고 버림!
 
             JTextArea contentArea = new JTextArea(text);
             contentArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
@@ -2774,7 +2545,6 @@ public class GeojiTalchulApp extends JFrame {
                 imageBox.setBackground(new Color(240, 240, 240));
                 imageBox.setPreferredSize(new Dimension(0, 200)); 
                 
-                // 이미지가 영역을 벗어나지 않게 리사이징
                 Image scaled = image.getImage().getScaledInstance(400, 200, Image.SCALE_SMOOTH);
                 JLabel imgIcon = new JLabel(new ImageIcon(scaled));
                 imageBox.add(imgIcon, BorderLayout.CENTER);
@@ -2782,7 +2552,6 @@ public class GeojiTalchulApp extends JFrame {
                 card.add(imageBox, BorderLayout.CENTER);
                 card.add(bottom, BorderLayout.SOUTH);
             } else {
-                // 사진이 없을 때는 bottom 패널을 CENTER에 두어 위로 끌어올림
                 card.add(bottom, BorderLayout.CENTER);
             }
 
@@ -2992,24 +2761,65 @@ public class GeojiTalchulApp extends JFrame {
         root.add(form,BorderLayout.CENTER);
 
         JButton save=primaryButton("지출 저장");
-        save.addActionListener(e->{
-            try{
-                long won=Long.parseLong(amount.getText().replace(",","").trim());
-                LocalDate d=LocalDate.parse(date.getText().trim());
-                String l=(String)large.getSelectedItem();
-                String m=(String)medium.getSelectedItem();
-                String s=small.getText().trim().isEmpty()?item.getText():small.getText();
-                if(s.trim().isEmpty()) throw new IllegalArgumentException("소분류를 입력하세요.");
+        // 진짜 서버로 지출 내역 쏘는 로직으로 교체
+        save.addActionListener(e -> {
+            try {
+                long won = Long.parseLong(amount.getText().replace(",", "").trim());
+                LocalDate d = LocalDate.parse(date.getText().trim());
+                String l = (String) large.getSelectedItem();
+                String m = (String) medium.getSelectedItem();
+                String s = small.getText().trim().isEmpty() ? item.getText() : small.getText();
+                if (s.trim().isEmpty()) throw new IllegalArgumentException("소분류를 입력하세요.");
+                String content = item.getText().trim();
 
-                state.addExpense(l,m,s,item.getText().trim(),won,d);
-                state.points += 20;
-                dlg.dispose();
-                refreshAll();
-                if(state.budgetUsage()>=1) JOptionPane.showMessageDialog(this,
-                        "지출이 저장되었습니다.\n\n⚠ 예산을 초과했습니다.","예산 경고",JOptionPane.WARNING_MESSAGE);
-                else JOptionPane.showMessageDialog(this,"지출이 저장되었습니다. +20P","저장 완료",JOptionPane.INFORMATION_MESSAGE);
-            }catch(Exception ex){
-                JOptionPane.showMessageDialog(dlg,ex.getMessage(),"입력 오류",JOptionPane.ERROR_MESSAGE);
+                // 서버 통신 중 버튼 막기 (연타 방지)
+                save.setEnabled(false);
+                save.setText("저장 중...");
+
+                new SwingWorker<JsonObject, Void>() {
+                    @Override
+                    protected JsonObject doInBackground() throws Exception {
+                        // 백엔드 API 규격에 맞춰 JSON 조립
+                        JsonObject body = new JsonObject();
+                        body.addProperty("userId", currentUserId); // 현재 로그인한 내 아이디
+                        body.addProperty("largeCategory", l);
+                        body.addProperty("mediumCategory", m);
+                        body.addProperty("smallCategory", s);
+                        body.addProperty("item", content);
+                        body.addProperty("amount", won);
+                        body.addProperty("expenseDate", d.toString());
+                        
+                        // 서버로 POST 발사!
+                        return httpPost("http://localhost:8080/api/expenses", body.toString());
+                    }
+
+                    @Override
+                    protected void done() {
+                        save.setEnabled(true);
+                        save.setText("지출 저장");
+                        try {
+                            JsonObject res = get();
+                            if (res != null) {
+                                // 일단 화면(상태)에도 추가해서 즉시 반영되게 함
+                                state.addExpense(l, m, s, content, won, d);
+                                state.points += 20;
+                                dlg.dispose();
+                                refreshAll();
+                                
+                                if (state.budgetUsage() >= 1) {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다.\n\n⚠ 예산을 초과했습니다.", "예산 경고", JOptionPane.WARNING_MESSAGE);
+                                } else {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다! +20P", "저장 완료", JOptionPane.INFORMATION_MESSAGE);
+                                }
+                            }
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(dlg, "서버 저장 실패: " + ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                }.execute();
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dlg, ex.getMessage(), "입력 오류", JOptionPane.ERROR_MESSAGE);
             }
         });
         JButton cancel=new JButton("취소");
@@ -3042,34 +2852,6 @@ public class GeojiTalchulApp extends JFrame {
         Map<String,List<String>> mediumMap=new LinkedHashMap<>();
         List<Expense> expenses=new ArrayList<>();
         Set<Integer> fixedExpenseIds=new HashSet<>();
-
-        AppState(){
-            mediumMap.put("주거/통신",Arrays.asList("월세","관리비","인터넷/휴대폰 요금"));
-            mediumMap.put("금융/보험",Arrays.asList("대출 원리금","실손보험","적금/투자"));
-            mediumMap.put("정기구독",Arrays.asList("OTT","음원 스트리밍","렌털료"));
-            mediumMap.put("식비",Arrays.asList("장보기","외식비","배달음식","카페/간식"));
-            mediumMap.put("교통/차량",Arrays.asList("대중교통","택시","주유비"));
-            mediumMap.put("생활/쇼핑",Arrays.asList("생필품","의류","미용실/화장품"));
-            mediumMap.put("취미/여가",Arrays.asList("문화생활","운동/학원비","여행"));
-            mediumMap.put("경조사/선물",Arrays.asList("축의금/부의금","명절 선물","기념일 선물"));
-            mediumMap.put("의료/건강",Arrays.asList("병원 진료비","약국","건강검진"));
-            mediumMap.put("유지/수리",Arrays.asList("가전/가구 교체","차량 수리비","세금"));
-
-            // Home reference-style mock data.
-            addExpense("식비","배달음식","버거킹 몬스터와퍼 세트","버거킹 몬스터와퍼 세트",10500,LocalDate.of(2026,8,15));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비 자동이체","알뜰폰 통신비 자동이체",24000,LocalDate.of(2026,8,14));
-            addExpense("경조사/선물","축의금/부의금","친구 결혼식 축의금","친구 결혼식 축의금",50000,LocalDate.of(2026,8,12));
-            addExpense("식비","카페/간식","아메리카노","아메리카노",4500,LocalDate.of(2026,8,10));
-            addExpense("교통/차량","대중교통","버스","버스",1500,LocalDate.of(2026,8,9));
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,8,5));
-            addExpense("식비","외식비","김치찌개","김치찌개",9000,LocalDate.of(2026,8,3));
-            addExpense("교통/차량","대중교통","지하철","지하철",1500,LocalDate.of(2026,8,2));
-            // Repeated candidates
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,7,5));
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,6,5));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비","알뜰폰 통신비",24000,LocalDate.of(2026,7,14));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비","알뜰폰 통신비",24000,LocalDate.of(2026,6,14));
-        }
 
         void addExpense(String large,String medium,String small,String item,long amount,LocalDate date){
             expenses.add(new Expense(nextId++,large,medium,small,item,amount,date,false));
@@ -3266,6 +3048,30 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- HTTP 유틸리티 ----------
     /** JSON Body를 POST하고 응답을 JsonObject로 반환. 오류 시 null 반환. */
+    
+    /** DELETE 요청 */
+    JsonObject httpDelete(String urlStr) {
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("DELETE");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                return JsonParser.parseString(sb.toString()).getAsJsonObject();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     JsonObject httpPost(String urlStr, String jsonBody) {
         try {
             URL url = new URL(urlStr);
@@ -3325,67 +3131,6 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     // ---------- Custom components ----------
-
-    // 🌟 말풍선 패널: 둥근 사각형(몸통) + 아래쪽 꼬리 삼각형
-    static class SpeechBubblePanel extends JPanel {
-        private static final int TAIL_H = 14; // 꼬리 높이
-        private static final int TAIL_W = 18; // 꼬리 너비
-        private final Color bubbleBg;
-        private final Color borderCol;
-        private final int radius;
-
-        SpeechBubblePanel(Color bg, Color border, int radius) {
-            this.bubbleBg  = bg;
-            this.borderCol = border;
-            this.radius    = radius;
-            setOpaque(false);
-            setBorder(new EmptyBorder(10, 18, 10 + TAIL_H, 18));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            int w     = getWidth();
-            int h     = getHeight();
-            int bodyH = h - TAIL_H;
-            int cx    = w / 2;
-
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            // 1. 몸통 채우기
-            g2.setColor(bubbleBg);
-            g2.fillRoundRect(0, 0, w - 1, bodyH - 1, radius, radius);
-
-            // 2. 꼬리 채우기
-            int[] xs = { cx - TAIL_W / 2, cx + TAIL_W / 2, cx };
-            int[] ys = { bodyH - 1, bodyH - 1, h - 1 };
-            g2.fillPolygon(xs, ys, 3);
-
-            // 3. 몸통 테두리
-            g2.setColor(borderCol);
-            g2.setStroke(new BasicStroke(1.2f));
-            g2.drawRoundRect(0, 0, w - 1, bodyH - 1, radius, radius);
-
-            // 4. 꼬리 사선 테두리
-            g2.drawLine(cx - TAIL_W / 2, bodyH - 1, cx, h - 1);
-            g2.drawLine(cx + TAIL_W / 2, bodyH - 1, cx, h - 1);
-
-            // 5. 몸통-꼬리 이음새 자연스럽게 덮기
-            g2.setColor(bubbleBg);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawLine(cx - TAIL_W / 2 + 1, bodyH - 1, cx + TAIL_W / 2 - 1, bodyH - 1);
-
-            g2.dispose();
-            super.paintComponent(g);
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            Dimension d = super.getPreferredSize();
-            return new Dimension(d.width, d.height + TAIL_H);
-        }
-    }
-
     static class RoundedPanel extends JPanel {
         int radius;
         RoundedPanel(Color bg, int radius){
