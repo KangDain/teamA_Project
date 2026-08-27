@@ -2054,7 +2054,7 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fill(innerHole);
 
-            // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
+            // 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
             String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
 
             g2.setColor(TEXT);
@@ -2280,23 +2280,619 @@ public class GeojiTalchulApp extends JFrame {
             return p;
         }
 
-        JPanel buildChallenges() {
-            JPanel p=roundedPanel(WHITE,18);
-            p.setLayout(new BorderLayout(10,10));
-            JPanel head=new JPanel(new BorderLayout());
-            head.setOpaque(false);
-            JLabel title=new JLabel("그룹 지출 챌린지");
-            title.setFont(FONT_TITLE);
-            JButton create=primaryButton("+ 챌린지 생성");
-            create.addActionListener(e->createChallenge());
-            head.add(title,BorderLayout.WEST); head.add(create,BorderLayout.EAST);
-            p.add(head,BorderLayout.NORTH);
+        // ── 챌린지 데이터 모델 ──
+        static class ChallengeData {
+            String name, ownerName, startDate, endDate;
+            int goalAmount, rewardPoint, memberCount;
+            List<String> members = new ArrayList<>();
+            boolean isMine;
+            ChallengeData(String name, String ownerName, String start, String end,
+                          int goal, int reward, int cnt, boolean isMine) {
+                this.name = name; this.ownerName = ownerName;
+                this.startDate = start; this.endDate = end;
+                this.goalAmount = goal; this.rewardPoint = reward;
+                this.memberCount = cnt; this.isMine = isMine;
+            }
+        }
+        List<ChallengeData> challengeList = new ArrayList<>();
+        JPanel challengeCardContainer = new JPanel();
 
-            JList<String> list=new JList<>(challengeModel);
-            list.setFont(FONT);
-            list.setFixedCellHeight(72);
-            p.add(new JScrollPane(list),BorderLayout.CENTER);
+        JPanel buildChallenges() {
+            JPanel p = roundedPanel(WHITE, 18);
+            p.setLayout(new BorderLayout(10, 14));
+            p.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+            // 헤더
+            JPanel head = new JPanel(new BorderLayout());
+            head.setOpaque(false);
+            JPanel titleBox = new JPanel();
+            titleBox.setOpaque(false);
+            titleBox.setLayout(new BoxLayout(titleBox, BoxLayout.Y_AXIS));
+            JLabel title = new JLabel("그룹 지출 챌린지");
+            title.setFont(FONT_TITLE);
+            JLabel sub = new JLabel("함께 절약 목표를 세우고 달성해 보세요!");
+            sub.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            sub.setForeground(MUTED);
+            titleBox.add(title);
+            titleBox.add(Box.createVerticalStrut(3));
+            titleBox.add(sub);
+            JButton create = primaryButton("+ 챌린지 생성");
+            create.addActionListener(e -> createChallenge());
+            head.add(titleBox, BorderLayout.WEST);
+            head.add(create, BorderLayout.EAST);
+            p.add(head, BorderLayout.NORTH);
+
+            // 카드 컨테이너
+            challengeCardContainer.setLayout(new BoxLayout(challengeCardContainer, BoxLayout.Y_AXIS));
+            challengeCardContainer.setBackground(new Color(248, 249, 251));
+            challengeCardContainer.setBorder(new EmptyBorder(8, 0, 8, 0));
+            JScrollPane scroll = new JScrollPane(challengeCardContainer);
+            scroll.setBorder(null);
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            p.add(scroll, BorderLayout.CENTER);
+
+            // 샘플 데이터 초기 로드
+            if (challengeList.isEmpty()) {
+                ChallengeData s1 = new ChallengeData("30만원 식비 줄이기", "절약왕김씨", "2026-08-01", "2026-08-31", 300000, 1000, 5, false);
+                s1.members.add("절약왕김씨 (방장)"); s1.members.add("소비요정"); s1.members.add("통장지킴이");
+                ChallengeData s2 = new ChallengeData("교통비 절약전", "프로거지", "2026-08-01", "2026-08-31", 100000, 500, 8, false);
+                s2.members.add("프로거지 (방장)");
+                challengeList.add(s1);
+                challengeList.add(s2);
+            }
+            refreshChallengeCards();
             return p;
+        }
+
+        void refreshChallengeCards() {
+            challengeCardContainer.removeAll();
+            if (challengeList.isEmpty()) {
+                JLabel empty = new JLabel("참여 중인 챌린지가 없습니다. 챌린지를 생성하거나 참여해 보세요!", SwingConstants.CENTER);
+                empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                empty.setForeground(MUTED);
+                empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                empty.setBorder(new EmptyBorder(40, 0, 0, 0));
+                challengeCardContainer.add(empty);
+            } else {
+                for (ChallengeData cd : challengeList) {
+                    challengeCardContainer.add(buildChallengeCard(cd));
+                    challengeCardContainer.add(Box.createVerticalStrut(12));
+                }
+            }
+            challengeCardContainer.revalidate();
+            challengeCardContainer.repaint();
+        }
+
+        JPanel buildChallengeCard(ChallengeData cd) {
+            JPanel card = new RoundedPanel(WHITE, 16);
+            card.setLayout(new BorderLayout(12, 0));
+            card.setBorder(new EmptyBorder(16, 18, 16, 18));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
+            card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JPanel badge = new JPanel();
+            badge.setBackground(cd.isMine ? GREEN_DARK : BLUE);
+            badge.setPreferredSize(new Dimension(6, 0));
+            badge.setOpaque(true);
+            card.add(badge, BorderLayout.WEST);
+
+            JPanel info = new JPanel();
+            info.setOpaque(false);
+            info.setLayout(new BoxLayout(info, BoxLayout.Y_AXIS));
+
+            JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+            row1.setOpaque(false);
+            JLabel nameLabel = new JLabel(cd.name);
+            nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            nameLabel.setForeground(TEXT);
+            JLabel ownerBadge = new JLabel(cd.isMine ? "  방장" : "  참여중");
+            ownerBadge.setFont(new Font("Malgun Gothic", Font.BOLD, 11));
+            ownerBadge.setForeground(cd.isMine ? GREEN_DARK : BLUE);
+            ownerBadge.setOpaque(true);
+            ownerBadge.setBackground(cd.isMine ? new Color(230, 245, 238) : new Color(230, 238, 255));
+            ownerBadge.setBorder(new EmptyBorder(2, 7, 2, 7));
+            row1.add(nameLabel); row1.add(ownerBadge);
+
+            JLabel dateLabel = new JLabel(cd.startDate + "  ~  " + cd.endDate);
+            dateLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+            dateLabel.setForeground(MUTED);
+            dateLabel.setBorder(new EmptyBorder(3, 0, 0, 0));
+
+            JPanel row3 = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+            row3.setOpaque(false);
+            JLabel goalLbl = new JLabel("목표 " + String.format("%,d", cd.goalAmount) + "원");
+            goalLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            JLabel rewardLbl = new JLabel("보상 " + String.format("%,d", cd.rewardPoint) + "P");
+            rewardLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            rewardLbl.setForeground(new Color(200, 140, 30));
+            JLabel memberLbl = new JLabel(cd.memberCount + "명 참여");
+            memberLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            memberLbl.setForeground(MUTED);
+            row3.add(goalLbl); row3.add(rewardLbl); row3.add(memberLbl);
+
+            info.add(row1);
+            info.add(Box.createVerticalStrut(4));
+            info.add(dateLabel);
+            info.add(Box.createVerticalStrut(4));
+            info.add(row3);
+            card.add(info, BorderLayout.CENTER);
+
+            JLabel arrow = new JLabel("›");
+            arrow.setFont(new Font("Malgun Gothic", Font.BOLD, 28));
+            arrow.setForeground(MUTED);
+            card.add(arrow, BorderLayout.EAST);
+
+            card.addMouseListener(new MouseAdapter() {
+                @Override public void mouseEntered(MouseEvent e) { card.setBackground(new Color(245, 248, 255)); card.repaint(); }
+                @Override public void mouseExited(MouseEvent e)  { card.setBackground(WHITE); card.repaint(); }
+                @Override public void mouseClicked(MouseEvent e) { showChallengeDetail(cd); }
+            });
+            return card;
+        }
+
+        void showChallengeDetail(ChallengeData cd) {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "챌린지 상세", true);
+            d.setSize(520, 560);
+            d.setLocationRelativeTo(this);
+            d.setLayout(new BorderLayout());
+            d.getContentPane().setBackground(BG);
+
+            // 배너
+            JPanel banner = new JPanel(new BorderLayout());
+            banner.setBackground(GREEN_DARK);
+            banner.setBorder(new EmptyBorder(22, 24, 22, 24));
+            JLabel bannerTitle = new JLabel("[챌린지]  " + cd.name);
+            bannerTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            bannerTitle.setForeground(WHITE);
+            JLabel bannerOwner = new JLabel("방장: " + cd.ownerName);
+            bannerOwner.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            bannerOwner.setForeground(new Color(200, 235, 220));
+            JPanel bannerText = new JPanel();
+            bannerText.setOpaque(false);
+            bannerText.setLayout(new BoxLayout(bannerText, BoxLayout.Y_AXIS));
+            bannerText.add(bannerTitle);
+            bannerText.add(Box.createVerticalStrut(4));
+            bannerText.add(bannerOwner);
+            banner.add(bannerText, BorderLayout.CENTER);
+            d.add(banner, BorderLayout.NORTH);
+
+            // 본문
+            JPanel body = new JPanel();
+            body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+            body.setBackground(BG);
+            body.setBorder(new EmptyBorder(20, 24, 10, 24));
+
+            JPanel infoCard = new RoundedPanel(WHITE, 14);
+            infoCard.setLayout(new GridLayout(3, 2, 10, 12));
+            infoCard.setBorder(new EmptyBorder(16, 20, 16, 20));
+            infoCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+            addDetailRow(infoCard, "시작일", cd.startDate);
+            addDetailRow(infoCard, "종료일", cd.endDate);
+            addDetailRow(infoCard, "목표 지출", String.format("%,d원", cd.goalAmount));
+            addDetailRow(infoCard, "보상 포인트", String.format("%,dP", cd.rewardPoint));
+            addDetailRow(infoCard, "참여 인원", cd.memberCount + "명");
+            addDetailRow(infoCard, "상태", "진행 중");
+            body.add(infoCard);
+            body.add(Box.createVerticalStrut(16));
+
+            JPanel memberCard = new RoundedPanel(WHITE, 14);
+            memberCard.setLayout(new BorderLayout(0, 8));
+            memberCard.setBorder(new EmptyBorder(14, 18, 14, 18));
+            memberCard.setMaximumSize(new Dimension(Integer.MAX_VALUE, 220));
+
+            JPanel memberHead = new JPanel(new BorderLayout());
+            memberHead.setOpaque(false);
+            JLabel memberTitle = new JLabel("참여 멤버");
+            memberTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+            memberHead.add(memberTitle, BorderLayout.WEST);
+            if (cd.isMine) {
+                JButton invBtn = flatButton("+ 친구 초대");
+                invBtn.setForeground(GREEN_DARK);
+                invBtn.addActionListener(ev -> { d.dispose(); showInviteFriendDialog(cd); });
+                memberHead.add(invBtn, BorderLayout.EAST);
+            }
+
+            JPanel memberList = new JPanel();
+            memberList.setLayout(new BoxLayout(memberList, BoxLayout.Y_AXIS));
+            memberList.setOpaque(false);
+            List<String> displayMembers = cd.members.isEmpty()
+                ? java.util.Arrays.asList(cd.ownerName + " (방장)") : cd.members;
+            for (String m : displayMembers) {
+                JPanel mrow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
+                mrow.setOpaque(false);
+                JLabel lbl = new JLabel("\u25CF  " + m);   // ● 불릿 포인트
+                lbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                lbl.setForeground(TEXT);
+                mrow.add(lbl);
+                memberList.add(mrow);
+            }
+            JScrollPane memberScroll = new JScrollPane(memberList);
+            memberScroll.setBorder(null);
+            memberCard.add(memberHead, BorderLayout.NORTH);
+            memberCard.add(memberScroll, BorderLayout.CENTER);
+            body.add(memberCard);
+
+            JScrollPane bodyScroll = new JScrollPane(body);
+            bodyScroll.setBorder(null);
+            d.add(bodyScroll, BorderLayout.CENTER);
+
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+            bottom.setBackground(new Color(248, 249, 251));
+            bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+            JButton close = styledSecondaryButton("닫기");
+            close.addActionListener(ev -> d.dispose());
+            if (cd.isMine) {
+                JButton invBtn2 = primaryButton("친구 초대");
+                invBtn2.addActionListener(ev -> { d.dispose(); showInviteFriendDialog(cd); });
+                bottom.add(invBtn2);
+            }
+            bottom.add(close);
+            d.add(bottom, BorderLayout.SOUTH);
+            d.setVisible(true);
+        }
+
+        private void addDetailRow(JPanel parent, String key, String val) {
+            JLabel k = new JLabel(key);
+            k.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            k.setForeground(MUTED);
+            JLabel v = new JLabel(val);
+            v.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            v.setForeground(TEXT);
+            parent.add(k); parent.add(v);
+        }
+
+        void showInviteFriendDialog(ChallengeData cd) {
+            List<String> friends = homePanel.friends;
+            if (friends.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                    "등록된 친구가 없습니다.\n홈 화면의 [친구 관리]에서 먼저 친구를 추가해 주세요.",
+                    "친구 초대", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "친구 초대", true);
+            d.setSize(380, 420);
+            d.setLocationRelativeTo(this);
+            d.setLayout(new BorderLayout());
+            d.getContentPane().setBackground(BG);
+
+            JLabel title = new JLabel("  초대할 친구를 선택하세요", SwingConstants.LEFT);
+            title.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            title.setBorder(new EmptyBorder(18, 18, 10, 18));
+            d.add(title, BorderLayout.NORTH);
+
+            JPanel listPanel = new JPanel();
+            listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+            listPanel.setBackground(WHITE);
+            listPanel.setBorder(new EmptyBorder(6, 16, 6, 16));
+            List<JCheckBox> boxes = new ArrayList<>();
+            for (String f : friends) {
+                boolean alreadyIn = cd.members.stream().anyMatch(m -> m.contains(f));
+                JCheckBox cb = new JCheckBox(f + (alreadyIn ? "  (이미 참여 중)" : ""));
+                cb.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                cb.setBackground(WHITE);
+                cb.setEnabled(!alreadyIn);
+                cb.setBorder(new EmptyBorder(8, 4, 8, 4));
+                boxes.add(cb);
+                listPanel.add(cb);
+            }
+            JScrollPane scroll = new JScrollPane(listPanel);
+            scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            d.add(scroll, BorderLayout.CENTER);
+
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+            bottom.setBackground(new Color(248, 249, 251));
+            bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+            JButton cancel = styledSecondaryButton("취소");
+            cancel.addActionListener(ev -> d.dispose());
+            JButton ok = primaryButton("초대 보내기");
+            ok.addActionListener(ev -> {
+                List<String> invited = new ArrayList<>();
+                for (int i = 0; i < boxes.size(); i++)
+                    if (boxes.get(i).isSelected()) invited.add(friends.get(i));
+                if (invited.isEmpty()) { JOptionPane.showMessageDialog(d, "초대할 친구를 선택해 주세요."); return; }
+                for (String inv : invited) {
+                    boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
+                    if (!dup) { cd.members.add(inv); cd.memberCount++; }
+                }
+                d.dispose();
+                refreshChallengeCards();
+                JOptionPane.showMessageDialog(this,
+                    String.join(", ", invited) + " 님께 초대를 보냈습니다!",
+                    "초대 완료", JOptionPane.INFORMATION_MESSAGE);
+            });
+            bottom.add(cancel); bottom.add(ok);
+            d.add(bottom, BorderLayout.SOUTH);
+            d.setVisible(true);
+        }
+
+        void createChallenge() {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "그룹 챌린지 생성", true);
+            d.setSize(480, 560);
+            d.setLocationRelativeTo(this);
+            d.setLayout(new BorderLayout());
+            d.getContentPane().setBackground(BG);
+
+            JLabel header = new JLabel("  새 챌린지 만들기", SwingConstants.LEFT);
+            header.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            header.setBorder(new EmptyBorder(20, 20, 12, 20));
+            d.add(header, BorderLayout.NORTH);
+
+            JPanel form = new JPanel();
+            form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+            form.setBackground(BG);
+            form.setBorder(new EmptyBorder(0, 20, 0, 20));
+
+            form.add(formLabel("챌린지 이름"));
+            JTextField nameField = new JTextField();
+            nameField.setFont(FONT);
+            nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            nameField.setBorder(new CompoundBorder(new LineBorder(BORDER, 1), new EmptyBorder(4, 8, 4, 8)));
+            form.add(nameField);
+            form.add(Box.createVerticalStrut(12));
+
+            form.add(formLabel("목표 지출금액 (원)"));
+            JTextField goalField = new JTextField("300000");
+            goalField.setFont(FONT);
+            goalField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            goalField.setBorder(new CompoundBorder(new LineBorder(BORDER, 1), new EmptyBorder(4, 8, 4, 8)));
+            form.add(goalField);
+            form.add(Box.createVerticalStrut(12));
+
+            form.add(formLabel("보상 포인트 (P)"));
+            JTextField rewardField = new JTextField("1000");
+            rewardField.setFont(FONT);
+            rewardField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            rewardField.setBorder(new CompoundBorder(new LineBorder(BORDER, 1), new EmptyBorder(4, 8, 4, 8)));
+            form.add(rewardField);
+            form.add(Box.createVerticalStrut(16));
+
+            form.add(formLabel("시작일"));
+            JTextField[] startRef = {null};
+            JPanel startRow = buildDateInputRow(d, startRef, "시작일");
+            startRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            form.add(startRow);
+            form.add(Box.createVerticalStrut(12));
+
+            form.add(formLabel("종료일"));
+            JTextField[] endRef = {null};
+            JPanel endRow = buildDateInputRow(d, endRef, "종료일");
+            endRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+            form.add(endRow);
+            form.add(Box.createVerticalStrut(6));
+
+            JLabel hint = new JLabel("  직접 입력: 20260827 / 2026-08-27 / 2026/08/27  또는 달력으로 선택");
+            hint.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+            hint.setForeground(MUTED);
+            form.add(hint);
+
+            JScrollPane formScroll = new JScrollPane(form);
+            formScroll.setBorder(null);
+            d.add(formScroll, BorderLayout.CENTER);
+
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 12));
+            bottom.setBackground(new Color(248, 249, 251));
+            bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+            JButton cancel = styledSecondaryButton("취소");
+            cancel.addActionListener(ev -> d.dispose());
+            JButton ok = primaryButton("생성하기");
+            ok.addActionListener(ev -> {
+                String nm = nameField.getText().trim();
+                if (nm.isEmpty()) { JOptionPane.showMessageDialog(d, "챌린지 이름을 입력해 주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE); return; }
+                String parsedStart = parseDateInput(startRef[0] != null ? startRef[0].getText().trim() : "");
+                String parsedEnd   = parseDateInput(endRef[0]   != null ? endRef[0].getText().trim()   : "");
+                if (parsedStart == null) { JOptionPane.showMessageDialog(d, "시작일 형식이 올바르지 않습니다.\n(예: 20260827, 2026-08-27, 2026/08/27)", "입력 오류", JOptionPane.WARNING_MESSAGE); return; }
+                if (parsedEnd   == null) { JOptionPane.showMessageDialog(d, "종료일 형식이 올바르지 않습니다.\n(예: 20260827, 2026-08-27, 2026/08/27)", "입력 오류", JOptionPane.WARNING_MESSAGE); return; }
+                int goal = 300000, reward = 1000;
+                try { goal   = Integer.parseInt(goalField.getText().trim().replaceAll(",", "")); } catch (NumberFormatException ignored) {}
+                try { reward = Integer.parseInt(rewardField.getText().trim().replaceAll(",", "")); } catch (NumberFormatException ignored) {}
+                String ownerName = userLabel.getText().replace(" 님", "");
+                ChallengeData cd = new ChallengeData(nm, ownerName, parsedStart, parsedEnd, goal, reward, 1, true);
+                cd.members.add(ownerName + " (방장)");
+                challengeList.add(cd);
+                state.points += 50;
+                refreshAll();
+                refreshChallengeCards();
+                d.dispose();
+                JOptionPane.showMessageDialog(CommunityPanel.this, "\"" + nm + "\" 챌린지가 생성되었습니다!\n포인트 50P가 적립되었습니다.", "챌린지 생성 완료", JOptionPane.INFORMATION_MESSAGE);
+            });
+            bottom.add(cancel); bottom.add(ok);
+            d.add(bottom, BorderLayout.SOUTH);
+            d.setVisible(true);
+        }
+
+        private JPanel buildDateInputRow(JDialog parent, JTextField[] resultRef, String label) {
+            JPanel row = new JPanel(new BorderLayout(6, 0));
+            row.setOpaque(false);
+            JTextField tf = new JTextField();
+            tf.setFont(FONT);
+            tf.setBorder(new CompoundBorder(new LineBorder(BORDER, 1), new EmptyBorder(4, 8, 4, 8)));
+            tf.setToolTipText("20260827, 2026-08-27, 2026/08/27 형태로 입력");
+            resultRef[0] = tf;
+            JButton calBtn = new JButton("달력");
+            calBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            calBtn.setPreferredSize(new Dimension(52, 36));
+            calBtn.setFocusPainted(false);
+            calBtn.setBackground(WHITE);
+            calBtn.setBorder(new LineBorder(BORDER, 1));
+            calBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            calBtn.addActionListener(e -> {
+                String picked = showDatePickerDialog(parent, label);
+                if (picked != null) tf.setText(picked);
+            });
+            row.add(tf, BorderLayout.CENTER);
+            row.add(calBtn, BorderLayout.EAST);
+            return row;
+        }
+
+        private String showDatePickerDialog(JDialog parent, String titleStr) {
+            JDialog cal = new JDialog(parent, titleStr + " 선택", true);
+            cal.setSize(400, 420);  // 충분히 크게
+            cal.setLocationRelativeTo(parent);
+            cal.setLayout(new BorderLayout());
+            cal.getContentPane().setBackground(WHITE);
+
+            LocalDate[] cursor = {LocalDate.now()};
+            String[] picked = {null};
+
+            // ── 헤더 (월 네비게이션) ──
+            JPanel nav = new JPanel(new BorderLayout(8, 0));
+            nav.setBackground(GREEN_DARK);
+            nav.setBorder(new EmptyBorder(12, 16, 12, 16));
+
+            JButton prev = new JButton("< 이전");
+            prev.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            prev.setForeground(WHITE);
+            prev.setBackground(new Color(63, 95, 88));
+            prev.setBorder(new EmptyBorder(6, 12, 6, 12));
+            prev.setFocusPainted(false);
+            prev.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JButton next = new JButton("다음 >");
+            next.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            next.setForeground(WHITE);
+            next.setBackground(new Color(63, 95, 88));
+            next.setBorder(new EmptyBorder(6, 12, 6, 12));
+            next.setFocusPainted(false);
+            next.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JLabel monthLabel = new JLabel("", SwingConstants.CENTER);
+            monthLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 17));
+            monthLabel.setForeground(WHITE);
+            nav.add(prev, BorderLayout.WEST);
+            nav.add(monthLabel, BorderLayout.CENTER);
+            nav.add(next, BorderLayout.EAST);
+            cal.add(nav, BorderLayout.NORTH);
+
+            // ── 달력 그리드 ──
+            JPanel calPanel = new JPanel(new BorderLayout(0, 0));
+            calPanel.setBackground(WHITE);
+            calPanel.setBorder(new EmptyBorder(12, 14, 8, 14));
+
+            // 요일 헤더 행
+            JPanel dayHeaderRow = new JPanel(new GridLayout(1, 7, 4, 0));
+            dayHeaderRow.setBackground(new Color(245, 246, 248));
+            dayHeaderRow.setBorder(new EmptyBorder(6, 0, 6, 0));
+            String[] dayNames = {"일","월","화","수","목","금","토"};
+            Color[] dayColors = {RED, TEXT, TEXT, TEXT, TEXT, TEXT, BLUE};
+            for (int i = 0; i < 7; i++) {
+                JLabel h = new JLabel(dayNames[i], SwingConstants.CENTER);
+                h.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+                h.setForeground(dayColors[i]);
+                dayHeaderRow.add(h);
+            }
+            calPanel.add(dayHeaderRow, BorderLayout.NORTH);
+
+            // 날짜 그리드 (6행 × 7열 고정)
+            JPanel grid = new JPanel(new GridLayout(6, 7, 4, 4));
+            grid.setBackground(WHITE);
+            grid.setBorder(new EmptyBorder(6, 0, 0, 0));
+            calPanel.add(grid, BorderLayout.CENTER);
+
+            cal.add(calPanel, BorderLayout.CENTER);
+
+            Runnable[] buildGrid = {null};
+            buildGrid[0] = () -> {
+                grid.removeAll();
+                YearMonth ym = YearMonth.of(cursor[0].getYear(), cursor[0].getMonth());
+                monthLabel.setText(ym.getYear() + "년  " + ym.getMonthValue() + "월");
+                int startDow = ym.atDay(1).getDayOfWeek().getValue() % 7; // 0=일
+                int total = startDow + ym.lengthOfMonth();
+                int cells = (int) Math.ceil(total / 7.0) * 7;
+                if (cells < 42) cells = 42;
+
+                for (int i = 0; i < cells; i++) {
+                    int dayNum = i - startDow + 1;
+                    if (dayNum < 1 || dayNum > ym.lengthOfMonth()) {
+                        JLabel empty = new JLabel("");
+                        grid.add(empty);
+                        continue;
+                    }
+                    final LocalDate ld = ym.atDay(dayNum);
+                    JButton btn = new JButton(String.valueOf(dayNum));
+                    btn.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                    btn.setMargin(new Insets(0, 0, 0, 0));
+                    btn.setFocusPainted(false);
+                    btn.setBorderPainted(false);
+                    btn.setOpaque(true);
+                    btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+                    DayOfWeek dow = ld.getDayOfWeek();
+                    if (ld.equals(LocalDate.now())) {
+                        // 오늘
+                        btn.setBackground(new Color(230, 243, 237));
+                        btn.setForeground(GREEN_DARK);
+                        btn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                    } else if (ld.equals(cursor[0])) {
+                        // 선택된 날짜
+                        btn.setBackground(GREEN_DARK);
+                        btn.setForeground(WHITE);
+                        btn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                    } else {
+                        btn.setBackground(WHITE);
+                        if (dow == DayOfWeek.SUNDAY) btn.setForeground(RED);
+                        else if (dow == DayOfWeek.SATURDAY) btn.setForeground(BLUE);
+                        else btn.setForeground(TEXT);
+                    }
+
+                    btn.addMouseListener(new MouseAdapter() {
+                        Color orig = btn.getBackground();
+                        @Override public void mouseEntered(MouseEvent e) {
+                            if (!ld.equals(cursor[0])) btn.setBackground(new Color(235, 248, 242));
+                        }
+                        @Override public void mouseExited(MouseEvent e) {
+                            if (!ld.equals(cursor[0])) btn.setBackground(orig);
+                        }
+                    });
+                    btn.addActionListener(ev -> {
+                        picked[0] = ld.format(DateTimeFormatter.ISO_LOCAL_DATE);
+                        cal.dispose();
+                    });
+                    grid.add(btn);
+                }
+                grid.revalidate();
+                grid.repaint();
+            };
+
+            prev.addActionListener(e -> { cursor[0] = cursor[0].minusMonths(1); buildGrid[0].run(); });
+            next.addActionListener(e -> { cursor[0] = cursor[0].plusMonths(1); buildGrid[0].run(); });
+            buildGrid[0].run();
+
+            // ── 하단 취소 버튼 ──
+            JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 10));
+            btnRow.setBackground(new Color(248, 249, 251));
+            btnRow.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+            JButton cancelCal = styledSecondaryButton("취소");
+            cancelCal.addActionListener(e -> cal.dispose());
+            btnRow.add(cancelCal);
+            cal.add(btnRow, BorderLayout.SOUTH);
+            cal.setVisible(true);
+            return picked[0];
+        }
+
+        private String parseDateInput(String raw) {
+            if (raw == null || raw.isBlank()) return null;
+            raw = raw.trim();
+            try {
+                if (raw.matches("\\d{8}")) {
+                    String r = raw.substring(0,4) + "-" + raw.substring(4,6) + "-" + raw.substring(6,8);
+                    LocalDate.parse(r); return r;
+                } else if (raw.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                    LocalDate.parse(raw); return raw;
+                } else if (raw.matches("\\d{4}/\\d{2}/\\d{2}")) {
+                    String r = raw.replace("/", "-"); LocalDate.parse(r); return r;
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        private JLabel formLabel(String text) {
+            JLabel l = new JLabel(text);
+            l.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            l.setForeground(new Color(70, 80, 90));
+            l.setBorder(new EmptyBorder(0, 0, 4, 0));
+            l.setAlignmentX(Component.LEFT_ALIGNMENT);
+            return l;
         }
 
         // 피드 화면
@@ -2327,22 +2923,6 @@ public class GeojiTalchulApp extends JFrame {
             return p;
         }
 
-        void createChallenge() {
-            JTextField name=new JTextField();
-            JTextField goal=new JTextField("300000");
-            JTextField reward=new JTextField("1000");
-            JPanel p=new JPanel(new GridLayout(3,2,8,8));
-            p.add(new JLabel("챌린지 이름")); p.add(name);
-            p.add(new JLabel("목표 지출금액")); p.add(goal);
-            p.add(new JLabel("보상 포인트")); p.add(reward);
-            int r=JOptionPane.showConfirmDialog(this,p,"그룹 챌린지 생성",JOptionPane.OK_CANCEL_OPTION);
-            if(r==JOptionPane.OK_OPTION){
-                challengeModel.addElement(" "+name.getText()+"   | 목표 "+goal.getText()+"원 | 보상 "+reward.getText()+"P | 참여 1명");
-                state.points += 50;
-                refreshAll();
-            }
-        }
-
         // 🌟 2. 힙한 새 글 쓰기 커스텀 팝업 (완벽 복구!)
         private void showWritePostDialog() {
             JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "새 게시물 작성", true);
@@ -2363,7 +2943,7 @@ public class GeojiTalchulApp extends JFrame {
             final ImageIcon[] selectedImage = {null};
             final String[] selectedBase64 = {null}; 
 
-            JButton attachBtn = new JButton("📷 갤러리에서 사진 첨부하기");
+            JButton attachBtn = new JButton("갤러리에서 사진 첨부하기");
             attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
             attachBtn.setBackground(new Color(245, 245, 245));
             attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
@@ -2377,7 +2957,7 @@ public class GeojiTalchulApp extends JFrame {
                         byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
                         selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
                         selectedImage[0] = new ImageIcon(bytes);
-                        attachBtn.setText("📷 " + chooser.getSelectedFile().getName() + " 첨부 완료!");
+                        attachBtn.setText("" + chooser.getSelectedFile().getName() + " 첨부 완료!");
                         attachBtn.setForeground(GREEN_DARK);
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -2495,7 +3075,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel likeBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
             likeBtn.setOpaque(false);
             likeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            JLabel likeIcon = new JLabel("♡");
+            JLabel likeIcon = new JLabel("\u2661");
             likeIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 18));
             likeIcon.setPreferredSize(new Dimension(24, 24));
             likeIcon.setHorizontalAlignment(SwingConstants.CENTER);
@@ -2511,14 +3091,14 @@ public class GeojiTalchulApp extends JFrame {
                     if (isLiked[0]) {
                         isLiked[0] = false;
                         currentLikes[0]--;
-                        likeIcon.setText("♡");
+                        likeIcon.setText("\u2661");
                         likeIcon.setForeground(TEXT);
                         likeText.setText("좋아요 " + currentLikes[0]);
                         likeText.setForeground(TEXT);
                     } else {
                         isLiked[0] = true;
                         currentLikes[0]++;
-                        likeIcon.setText("♥");
+                        likeIcon.setText("\u2665");
                         likeIcon.setForeground(RED);
                         likeText.setText("좋아요 " + currentLikes[0]);
                         likeText.setForeground(RED);
@@ -2928,7 +3508,25 @@ public class GeojiTalchulApp extends JFrame {
         JButton b = new JButton(text);
         b.setFont(FONT_BOLD); b.setForeground(MUTED); b.setBackground(WHITE);
         b.setFocusPainted(false);
-        // 🌟 setBorder 삭제
+        return b;
+    }
+
+    /** 취소/닫기 등 보조 버튼 - 테두리 있는 스타일 */
+    JButton styledSecondaryButton(String text) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+        b.setForeground(new Color(70, 80, 90));
+        b.setBackground(WHITE);
+        b.setFocusPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setBorder(new CompoundBorder(
+            new LineBorder(BORDER, 1),
+            new EmptyBorder(7, 20, 7, 20)
+        ));
+        b.addMouseListener(new MouseAdapter() {
+            @Override public void mouseEntered(MouseEvent e) { b.setBackground(new Color(245, 246, 248)); }
+            @Override public void mouseExited(MouseEvent e)  { b.setBackground(WHITE); }
+        });
         return b;
     }
 
