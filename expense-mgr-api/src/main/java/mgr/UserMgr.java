@@ -171,6 +171,25 @@ public class UserMgr {
         return flag;
     }
 
+        public boolean updateProfileImage(int userId, String base64Image) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        boolean flag = false;
+        try {
+            con = pool.getConnection();
+            String sql = "UPDATE user SET profile_image=? WHERE user_id=?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setString(1, base64Image);
+            pstmt.setInt(2, userId);
+            if (pstmt.executeUpdate() == 1) flag = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.freeConnection(con, pstmt);
+        }
+        return flag;
+    }
+
     private UserBean mapUserBean(ResultSet rs) throws SQLException {
         UserBean bean = new UserBean();
         bean.setUserId(rs.getInt("user_id"));
