@@ -1,18 +1,92 @@
 package com.richman.ui;
 
-import javax.swing.*;
-import javax.swing.border.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.BasicStroke;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.Shape;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Arc2D;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.io.*;
-import java.net.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.UIManager;
+import javax.swing.border.AbstractBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
+import javax.swing.border.MatteBorder;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import com.google.gson.JsonObject;
@@ -208,6 +282,7 @@ public class GeojiTalchulApp extends JFrame {
                         JsonObject res = get();
                         if (res != null && res.has("userId")) {
                             currentUserId = res.get("userId").getAsInt();
+                            
                             // 로그인 성공 후 내 지출 내역 가져오기
                             loadMyExpensesFromServer();
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
@@ -676,15 +751,20 @@ public class GeojiTalchulApp extends JFrame {
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 9));
         right.setBackground(WHITE);
 
+        JButton friendsBtn = primaryButton("친구 관리");
+        friendsBtn.addActionListener(e -> {
+            if (homePanel != null) {
+                homePanel.showFriendsDialog();
+            }
+        });
+
         JButton bell = new JButton("♟");
         styleIconButton(bell);
         bell.addActionListener(e -> showNotifications());
 
-        // 🌟 원흉이었던 setBorder 삭제 완료 (완벽한 알약 쉐입 적용)
         JButton setting = primaryButton("설정");
         setting.addActionListener(e -> showSettings());
 
-        // 🌟 로그아웃 버튼 (FlatLaf 알약 쉐입 적용)
         JButton logout = flatButton("로그아웃");
         logout.addActionListener(e -> {
             int res = JOptionPane.showConfirmDialog(content, "로그아웃 하시겠습니까?", "로그아웃", JOptionPane.YES_NO_OPTION);
@@ -693,6 +773,7 @@ public class GeojiTalchulApp extends JFrame {
             }
         });
 
+        right.add(friendsBtn);
         right.add(bell);
         right.add(setting);
         right.add(logout);
@@ -860,14 +941,14 @@ public class GeojiTalchulApp extends JFrame {
         JPanel recentList = new JPanel();
         PieChart homePie = new PieChart();
         JPanel alertBanner;
-        JLabel homeCharacter; // 🌟 스킨용 캐릭터 라벨 추가
+        JLabel homeCharacter; 
+        List<String> friends = new ArrayList<>(Arrays.asList("절약왕김씨", "소비요정", "통장지킴이")); 
 
         HomePanel() {
-            setLayout(new BorderLayout(0, 20)); // 상단 알림 배너와 본문 사이의 여백 20px
+            setLayout(new BorderLayout(0, 20)); 
             setBackground(BG);
-            setBorder(new EmptyBorder(30, 30, 30, 30)); // 화면 전체 외곽 여백
+            setBorder(new EmptyBorder(30, 30, 30, 30)); 
 
-            // 1. 상단 알림 배너
             alertBanner = buildAlertBanner();
             add(alertBanner, BorderLayout.NORTH);
 
@@ -902,6 +983,111 @@ public class GeojiTalchulApp extends JFrame {
             centerGrid.add(bottomRow);
 
             add(centerGrid, BorderLayout.CENTER);
+        }
+        
+        void showFriendsDialog() {
+            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "친구 관리", true);
+            d.setSize(400, 500);
+            d.setLocationRelativeTo(this);
+            d.getContentPane().setBackground(BG);
+            
+            JPanel p = new JPanel(new BorderLayout(0, 15));
+            p.setOpaque(false);
+            p.setBorder(new EmptyBorder(20, 20, 20, 20));
+            
+            JPanel head = new JPanel(new BorderLayout());
+            head.setOpaque(false);
+            JLabel title = new JLabel("내 친구 목록");
+            title.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            
+            JPanel addBox = new JPanel(new BorderLayout(5, 0));
+            addBox.setOpaque(false);
+            JTextField addTf = new JTextField(10);
+            addTf.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            JButton addBtn = primaryButton("추가");
+            addBtn.setPreferredSize(new Dimension(70, 32));
+            addBox.add(addTf, BorderLayout.CENTER);
+            addBox.add(addBtn, BorderLayout.EAST);
+            
+            head.add(title, BorderLayout.WEST);
+            head.add(addBox, BorderLayout.EAST);
+            
+            JPanel listContainer = new JPanel();
+            listContainer.setLayout(new BoxLayout(listContainer, BoxLayout.Y_AXIS));
+            listContainer.setBackground(WHITE);
+            
+            JScrollPane scroll = new JScrollPane(listContainer);
+            scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+            scroll.getVerticalScrollBar().setUnitIncrement(16);
+            
+            Runnable[] refreshBox = new Runnable[1];
+            refreshBox[0] = () -> {
+                listContainer.removeAll();
+                if (friends.isEmpty()) {
+                    JLabel empty = new JLabel("등록된 친구가 없습니다.");
+                    empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                    empty.setForeground(MUTED);
+                    empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                    empty.setBorder(new EmptyBorder(20, 0, 0, 0));
+                    listContainer.add(empty);
+                } else {
+                    for (String f : friends) {
+                        JPanel row = new JPanel(new BorderLayout());
+                        row.setBackground(WHITE);
+                        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+                        row.setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
+                            new EmptyBorder(10, 15, 10, 15)
+                        ));
+                        
+                        JLabel name = new JLabel(f);
+                        name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                        
+                        JButton del = new JButton("삭제");
+                        del.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                        del.setBackground(new Color(255, 235, 235));
+                        del.setForeground(RED);
+                        del.setBorder(new EmptyBorder(4, 10, 4, 10));
+                        del.setFocusPainted(false);
+                        del.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                        del.addActionListener(ev -> {
+                            int res = JOptionPane.showConfirmDialog(d, "'" + f + "' 님을 친구 목록에서 삭제하시겠습니까?", "친구 삭제 확인", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                            if (res == JOptionPane.YES_OPTION) {
+                                friends.remove(f);
+                                refreshBox[0].run();
+                            }
+                        });
+                        
+                        row.add(name, BorderLayout.WEST);
+                        row.add(del, BorderLayout.EAST);
+                        listContainer.add(row);
+                    }
+                }
+                listContainer.revalidate();
+                listContainer.repaint();
+            };
+            
+            addBtn.addActionListener(e -> {
+                String newF = addTf.getText().trim();
+                if (!newF.isEmpty()) {
+                    if (friends.contains(newF)) {
+                        JOptionPane.showMessageDialog(d, "이미 등록된 친구입니다.");
+                    } else {
+                        friends.add(newF);
+                        addTf.setText("");
+                        refreshBox[0].run();
+                        JOptionPane.showMessageDialog(d, newF + " 님을 친구로 추가했습니다!");
+                    }
+                }
+            });
+            
+            refreshBox[0].run();
+            
+            p.add(head, BorderLayout.NORTH);
+            p.add(scroll, BorderLayout.CENTER);
+            
+            d.add(p);
+            d.setVisible(true);
         }
 
         JPanel buildAlertBanner() {
@@ -2232,10 +2418,60 @@ public class GeojiTalchulApp extends JFrame {
             
             JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
             actions.setOpaque(false);
-            JLabel likeBtn = new JLabel("❤️ 좋아요 " + likes);
-            JLabel commentBtn = new JLabel("💬 댓글 " + comments);
-            likeBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
-            commentBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            
+            // 🌟 1. 좋아요 버튼 기능
+            int[] currentLikes = {likes};
+            boolean[] isLiked = {false};
+            
+            JPanel likeBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            likeBtn.setOpaque(false);
+            likeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            JLabel likeIcon = new JLabel("♡");
+            likeIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 18));
+            likeIcon.setPreferredSize(new Dimension(24, 24));
+            likeIcon.setHorizontalAlignment(SwingConstants.CENTER);
+            likeIcon.setVerticalAlignment(SwingConstants.CENTER);
+            JLabel likeText = new JLabel("좋아요 " + currentLikes[0]);
+            likeText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            likeBtn.add(likeIcon);
+            likeBtn.add(likeText);
+            
+            likeBtn.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (isLiked[0]) {
+                        isLiked[0] = false;
+                        currentLikes[0]--;
+                        likeIcon.setText("♡");
+                        likeIcon.setForeground(TEXT);
+                        likeText.setText("좋아요 " + currentLikes[0]);
+                        likeText.setForeground(TEXT);
+                    } else {
+                        isLiked[0] = true;
+                        currentLikes[0]++;
+                        likeIcon.setText("♥");
+                        likeIcon.setForeground(RED);
+                        likeText.setText("좋아요 " + currentLikes[0]);
+                        likeText.setForeground(RED);
+                    }
+                }
+            });
+
+            // 🌟 2. 날아갔던 댓글 버튼 기능 복구!
+            int[] currentComments = {comments};
+            JPanel commentBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+            commentBtn.setOpaque(false);
+            commentBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            JLabel commentIcon = new JLabel("💬");
+            commentIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
+            commentIcon.setPreferredSize(new Dimension(24, 24));
+            commentIcon.setHorizontalAlignment(SwingConstants.CENTER);
+            commentIcon.setVerticalAlignment(SwingConstants.CENTER);
+            JLabel commentText = new JLabel("댓글 " + currentComments[0]);
+            commentText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            commentBtn.add(commentIcon);
+            commentBtn.add(commentText);
+
             actions.add(likeBtn);
             actions.add(commentBtn);
 
@@ -2270,6 +2506,7 @@ public class GeojiTalchulApp extends JFrame {
 
             return card;
         }
+
     }
 
     // ---------- MY / STORE ----------
@@ -2473,7 +2710,7 @@ public class GeojiTalchulApp extends JFrame {
         root.add(form,BorderLayout.CENTER);
 
         JButton save=primaryButton("지출 저장");
-        // 서버로 지출 내역 쏘는 로직으로 교체
+        // 진짜 서버로 지출 내역 쏘는 로직으로 교체
         save.addActionListener(e -> {
             try {
                 long won = Long.parseLong(amount.getText().replace(",", "").trim());
@@ -2564,34 +2801,6 @@ public class GeojiTalchulApp extends JFrame {
         Map<String,List<String>> mediumMap=new LinkedHashMap<>();
         List<Expense> expenses=new ArrayList<>();
         Set<Integer> fixedExpenseIds=new HashSet<>();
-
-        AppState(){
-            mediumMap.put("주거/통신",Arrays.asList("월세","관리비","인터넷/휴대폰 요금"));
-            mediumMap.put("금융/보험",Arrays.asList("대출 원리금","실손보험","적금/투자"));
-            mediumMap.put("정기구독",Arrays.asList("OTT","음원 스트리밍","렌털료"));
-            mediumMap.put("식비",Arrays.asList("장보기","외식비","배달음식","카페/간식"));
-            mediumMap.put("교통/차량",Arrays.asList("대중교통","택시","주유비"));
-            mediumMap.put("생활/쇼핑",Arrays.asList("생필품","의류","미용실/화장품"));
-            mediumMap.put("취미/여가",Arrays.asList("문화생활","운동/학원비","여행"));
-            mediumMap.put("경조사/선물",Arrays.asList("축의금/부의금","명절 선물","기념일 선물"));
-            mediumMap.put("의료/건강",Arrays.asList("병원 진료비","약국","건강검진"));
-            mediumMap.put("유지/수리",Arrays.asList("가전/가구 교체","차량 수리비","세금"));
-
-            // Home reference-style mock data.
-            addExpense("식비","배달음식","버거킹 몬스터와퍼 세트","버거킹 몬스터와퍼 세트",10500,LocalDate.of(2026,8,15));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비 자동이체","알뜰폰 통신비 자동이체",24000,LocalDate.of(2026,8,14));
-            addExpense("경조사/선물","축의금/부의금","친구 결혼식 축의금","친구 결혼식 축의금",50000,LocalDate.of(2026,8,12));
-            addExpense("식비","카페/간식","아메리카노","아메리카노",4500,LocalDate.of(2026,8,10));
-            addExpense("교통/차량","대중교통","버스","버스",1500,LocalDate.of(2026,8,9));
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,8,5));
-            addExpense("식비","외식비","김치찌개","김치찌개",9000,LocalDate.of(2026,8,3));
-            addExpense("교통/차량","대중교통","지하철","지하철",1500,LocalDate.of(2026,8,2));
-            // Repeated candidates
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,7,5));
-            addExpense("정기구독","OTT","넷플릭스","넷플릭스",17000,LocalDate.of(2026,6,5));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비","알뜰폰 통신비",24000,LocalDate.of(2026,7,14));
-            addExpense("주거/통신","인터넷/휴대폰 요금","알뜰폰 통신비","알뜰폰 통신비",24000,LocalDate.of(2026,6,14));
-        }
 
         void addExpense(String large,String medium,String small,String item,long amount,LocalDate date){
             expenses.add(new Expense(nextId++,large,medium,small,item,amount,date,false));
