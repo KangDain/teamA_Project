@@ -2281,7 +2281,7 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         // ── 챌린지 데이터 모델 ──
-        static class ChallengeData {
+        class ChallengeData {
             String name, ownerName, startDate, endDate;
             int goalAmount, rewardPoint, memberCount;
             List<String> members = new ArrayList<>();
@@ -2871,7 +2871,7 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         private String parseDateInput(String raw) {
-            if (raw == null || raw.isBlank()) return null;
+            if (raw == null || raw.trim().isEmpty()) return null;
             raw = raw.trim();
             try {
                 if (raw.matches("\\d{8}")) {
