@@ -1,51 +1,13 @@
 package com.richman.ui;
 
-<<<<<<< HEAD
 import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
-=======
-import java.awt.BasicStroke;
-import java.awt.BorderLayout;
-import java.awt.CardLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Frame;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Image;
-import java.awt.Insets;
-import java.awt.Point;
-import java.awt.RenderingHints;
-import java.awt.Shape;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
->>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 import java.awt.geom.Arc2D;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-<<<<<<< HEAD
 import java.util.*;
-=======
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
->>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 import java.util.List;
 import java.util.stream.Collectors;
 import java.io.*;
@@ -110,10 +72,6 @@ public class GeojiTalchulApp extends JFrame {
     // 🌟 서버에서 받아올 내 프로필 사진을 저장해둘 전역 변수
     Image currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
 
-    // 🌟 서버에서 받아올 내 프로필 사진을 저장해둘 전역 변수
-    // Image currentUserProfileImage = null;
-    Image currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
-
     public GeojiTalchulApp() {
         super("거지 탈출 - 계층형 지출 관리");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -147,7 +105,6 @@ public class GeojiTalchulApp extends JFrame {
         refreshAll();
     }
 
-<<<<<<< HEAD
     // 서버에서 내 지출 내역을 싹 긁어오는 메서드
     void loadMyExpensesFromServer() {
         new SwingWorker<JsonObject, Void>() {
@@ -185,9 +142,7 @@ public class GeojiTalchulApp extends JFrame {
             }
         }.execute();
     }
-    
-=======
->>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
+
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
         wrapper.setBackground(BG);
@@ -1843,13 +1798,8 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(WHITE);
             g2.fill(innerHole);
 
-<<<<<<< HEAD
             // 🎯 마우스를 올리지 않았을 때는 '대분류' 글자 대신 'maxCategory(1위 지출)' 띄우기!
             String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
-=======
-            // 🎯 중앙 텍스트는 항상 '대분류'로 고정
-            String centerTitle = mode;
->>>>>>> 71d9eddc9603b0867b251cced5680009c2fecc3b
 
             g2.setColor(TEXT);
             g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
