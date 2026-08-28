@@ -181,35 +181,48 @@ public class GeojiTalchulApp extends JFrame {
 
     // 서버에서 내 지출 내역을 싹 긁어오는 메서드
     void loadMyExpensesFromServer() {
-        new SwingWorker<JsonObject, Void>() {
+        new SwingWorker<com.google.gson.JsonElement, Void>() {
             @Override
-            protected JsonObject doInBackground() throws Exception {
-                // 내 아이디를 달아서 GET 요청 발사
-                return httpGet("http://localhost:8080/api/expenses?userId=" + currentUserId);
+            protected com.google.gson.JsonElement doInBackground() throws Exception {
+                return httpGetElement("http://localhost:8080/api/expenses?userId=" + currentUserId);
             }
 
             @Override
             protected void done() {
                 try {
-                    JsonObject res = get();
-                    if (res != null && res.has("data")) {
-                        state.expenses.clear(); // 기존 거 싹 비우고
-                        
-                        // 서버에서 준 데이터(배열)를 하나씩 까서 앱 상태에 넣기
-                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
-                        for (com.google.gson.JsonElement el : arr) {
-                            JsonObject obj = el.getAsJsonObject();
-                            state.addExpense(
-                                obj.get("largeCategory").getAsString(),
-                                obj.get("mediumCategory").getAsString(),
-                                obj.get("smallCategory").getAsString(),
-                                obj.get("item").getAsString(),
-                                obj.get("amount").getAsLong(),
-                                LocalDate.parse(obj.get("expenseDate").getAsString())
-                            );
+                    com.google.gson.JsonElement el = get();
+                    if (el == null) return;
+
+                    com.google.gson.JsonArray arr = null;
+
+                    // 서버가 {"data": [...]} 형태로 반환하는 경우
+                    if (el.isJsonObject()) {
+                        com.google.gson.JsonObject res = el.getAsJsonObject();
+                        if (res.has("data")) {
+                            arr = res.getAsJsonArray("data");
                         }
-                        refreshAll(); // 데이터 다 받았으니 화면 싹 새로고침!
+                    // 서버가 [...] 배열을 바로 반환하는 경우 (방어 처리)
+                    } else if (el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
                     }
+
+                    if (arr == null) return;
+
+                    state.expenses.clear(); // 기존 거 싹 비우고
+
+                    for (com.google.gson.JsonElement item : arr) {
+                        JsonObject obj = item.getAsJsonObject();
+                        String large  = obj.has("largeCategory")  ? obj.get("largeCategory").getAsString()  : "";
+                        String medium = obj.has("mediumCategory") ? obj.get("mediumCategory").getAsString() : "";
+                        String small  = obj.has("smallCategory")  ? obj.get("smallCategory").getAsString()  : "";
+                        String name   = obj.has("item")           ? obj.get("item").getAsString()           : "";
+                        long amount   = obj.has("amount")         ? obj.get("amount").getAsLong()           : 0;
+                        String dateStr = obj.has("expenseDate")   ? obj.get("expenseDate").getAsString()    : "";
+                        int expenseId = obj.has("expenseId")      ? obj.get("expenseId").getAsInt()         : (state.nextId++);
+                        if (dateStr.isEmpty()) continue;
+                        state.addDbExpense(expenseId, large, medium, small, name, amount, LocalDate.parse(dateStr));
+                    }
+                    refreshAll(); // 데이터 다 받았으니 화면 싹 새로고침!
                 } catch (Exception ex) {
                     System.err.println("데이터 불러오기 실패: " + ex.getMessage());
                 }
@@ -217,40 +230,73 @@ public class GeojiTalchulApp extends JFrame {
         }.execute();
     }
 
+    /** GET 요청을 보내고 응답을 JsonElement로 반환 (배열/객체 모두 처리). 오류 시 null 반환. */
+    com.google.gson.JsonElement httpGetElement(String urlStr) {
+        try {
+            java.net.URL url = new java.net.URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            int status = conn.getResponseCode();
+            InputStream is = (status >= 200 && status < 300) ? conn.getInputStream() : conn.getErrorStream();
+            if (is == null) return null;
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                return JsonParser.parseString(sb.toString());
+            }
+        } catch (Exception e) {
+            System.err.println("httpGetElement 실패: " + e.getMessage());
+            return null;
+        }
+    }
+
     // 서버에서 커뮤니티 피드 싹 긁어오기
     void loadCommunityFeed() {
-        new SwingWorker<JsonObject, Void>() {
+        new SwingWorker<com.google.gson.JsonElement, Void>() {
             @Override
-            protected JsonObject doInBackground() throws Exception {
-                return httpGet("http://localhost:8080/api/posts");
+            protected com.google.gson.JsonElement doInBackground() throws Exception {
+                return httpGetElement("http://localhost:8080/api/posts");
             }
             @Override
             protected void done() {
                 try {
-                    JsonObject res = get();
-                    if (res != null && res.has("data")) {
-                        communityPanel.feedContainer.removeAll(); // 가짜 데이터 밀어버림
-                        com.google.gson.JsonArray arr = res.getAsJsonArray("data");
-                        for (com.google.gson.JsonElement el : arr) {
-                            JsonObject obj = el.getAsJsonObject();
-                            String author = obj.get("author").getAsString();
-                            String content = obj.get("content").getAsString();
-                            int likes = obj.get("likes").getAsInt();
-                            int comments = obj.get("comments").getAsInt();
-                            String base64Img = obj.has("image") && !obj.get("image").isJsonNull() ? obj.get("image").getAsString() : "";
-                            
-                            ImageIcon imgIcon = null;
-                            if (!base64Img.isEmpty()) {
-                                byte[] bytes = java.util.Base64.getDecoder().decode(base64Img);
-                                imgIcon = new ImageIcon(bytes);
-                            }
-                            // 화면에 진짜 카드 꽂기
-                            communityPanel.feedContainer.add(communityPanel.buildInstaCard(author, content, imgIcon, likes, comments));
-                            communityPanel.feedContainer.add(Box.createVerticalStrut(20));
-                        }
-                        communityPanel.feedContainer.revalidate();
-                        communityPanel.feedContainer.repaint();
+                    com.google.gson.JsonElement el = get();
+                    if (el == null) return;
+
+                    com.google.gson.JsonArray arr = null;
+                    if (el.isJsonObject()) {
+                        com.google.gson.JsonObject res = el.getAsJsonObject();
+                        if (res.has("data")) arr = res.getAsJsonArray("data");
+                    } else if (el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
                     }
+
+                    if (arr == null || arr.size() == 0) return;
+
+                    communityPanel.feedContainer.removeAll();
+                    for (com.google.gson.JsonElement item : arr) {
+                        JsonObject obj = item.getAsJsonObject();
+                        String author  = obj.has("author")   ? obj.get("author").getAsString()   : "알수없음";
+                        String content = obj.has("content")  ? obj.get("content").getAsString()  : "";
+                        int likes      = obj.has("likes")    ? obj.get("likes").getAsInt()       : 0;
+                        int comments   = obj.has("comments") ? obj.get("comments").getAsInt()    : 0;
+                        String base64Img = obj.has("image") && !obj.get("image").isJsonNull()
+                                ? obj.get("image").getAsString() : "";
+
+                        ImageIcon imgIcon = null;
+                        if (!base64Img.isEmpty()) {
+                            byte[] bytes = java.util.Base64.getDecoder().decode(base64Img);
+                            imgIcon = new ImageIcon(bytes);
+                        }
+                        communityPanel.feedContainer.add(communityPanel.buildInstaCard(author, content, imgIcon, likes, comments));
+                        communityPanel.feedContainer.add(Box.createVerticalStrut(20));
+                    }
+                    communityPanel.feedContainer.revalidate();
+                    communityPanel.feedContainer.repaint();
                 } catch (Exception ex) {
                     System.err.println("피드 불러오기 실패: " + ex.getMessage());
                 }
@@ -1554,7 +1600,7 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- CALENDAR ----------
     class CalendarPanel extends JPanel {
-        YearMonth month = YearMonth.of(2026, 8);
+        YearMonth month = YearMonth.now();
         JPanel grid = new JPanel(new GridLayout(0, 7, 6, 6));
         JLabel monthLabel = new JLabel();
 
@@ -1721,7 +1767,7 @@ public class GeojiTalchulApp extends JFrame {
                             @Override
                             protected JsonObject doInBackground() throws Exception {
                                 // 해당 지출의 고유 ID(x.id)를 서버로 보내서 삭제
-                                return httpDelete("http://localhost:8080/api/expenses?id=" + x.id);
+                                return httpDelete("http://localhost:8080/api/expenses/" + x.id);
                             }
                             @Override
                             protected void done() {
@@ -1825,14 +1871,18 @@ public class GeojiTalchulApp extends JFrame {
             trendHead.add(trendTitle, BorderLayout.WEST);
             
             JComboBox<String> trendCombo = new JComboBox<>(new String[]{"1개월", "6개월", "1년"});
-            trendCombo.setSelectedIndex(1);
+            trendCombo.setSelectedIndex(0);
             trendCombo.setPreferredSize(new Dimension(100, 28));
             trendCombo.addActionListener(e -> {
                 String sel = (String)trendCombo.getSelectedItem();
-                if (sel.equals("1개월")) trend.setMode(1);
-                else if (sel.equals("6개월")) trend.setMode(6);
-                else trend.setMode(12);
+                int m = 6;
+                if (sel.equals("1개월")) m = 1;
+                else if (sel.equals("6개월")) m = 6;
+                else m = 12;
+                trend.setMode(m);
+                pie.setTimeMode(m);
                 trend.repaint();
+                pie.repaint();
             });
             trendHead.add(trendCombo, BorderLayout.EAST);
             trendCard.add(trendHead, BorderLayout.NORTH);
@@ -1894,10 +1944,125 @@ public class GeojiTalchulApp extends JFrame {
                     return label;
                 }
             });
+            detailTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            detailTable.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (e.getClickCount() == 2) {
+                        int row = detailTable.getSelectedRow();
+                        if (row >= 0 && row < currentList.size()) {
+                            showExpenseDetail(currentList.get(row));
+                        }
+                    }
+                }
+            });
             JScrollPane sp = new JScrollPane(detailTable);
             sp.setBorder(BorderFactory.createEmptyBorder());
             detail.add(sp, BorderLayout.CENTER);
             add(detail, BorderLayout.CENTER);
+        }
+
+        // 현재 테이블에 표시 중인 Expense 리스트 (더블클릭 시 참조용)
+        List<Expense> currentList = new ArrayList<>();
+
+        void showExpenseDetail(Expense e) {
+            JDialog dlg = new JDialog((java.awt.Frame) SwingUtilities.getWindowAncestor(this), "지출 상세 정보", true);
+            dlg.setSize(520, 460);
+            dlg.setLocationRelativeTo(this);
+            dlg.setResizable(true);
+
+            JPanel root = new JPanel(new BorderLayout(0, 0));
+            root.setBackground(WHITE);
+
+            // ── 상단 헤더 ──
+            JPanel header = new JPanel(new BorderLayout());
+            header.setBackground(GREEN_DARK);
+            header.setBorder(new EmptyBorder(20, 24, 20, 24));
+            JLabel headerTitle = new JLabel(e.item == null || e.item.trim().isEmpty() ? e.small : e.item);
+            headerTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            headerTitle.setForeground(WHITE);
+            JLabel headerAmount = new JLabel("-" + won(e.amount));
+            headerAmount.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            headerAmount.setForeground(new Color(255, 200, 200));
+            header.add(headerTitle, BorderLayout.WEST);
+            header.add(headerAmount, BorderLayout.EAST);
+            root.add(header, BorderLayout.NORTH);
+
+            // ── 상세 항목들 ──
+            JPanel body = new JPanel();
+            body.setBackground(WHITE);
+            body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+            body.setBorder(new EmptyBorder(8, 0, 8, 0));
+
+            body.add(detailRow("날짜",     e.date.format(DateTimeFormatter.ofPattern("yyyy년 MM월 dd일 (E)", Locale.KOREAN))));
+            body.add(detailRow("대분류",   e.large));
+            body.add(detailRow("중분류",   e.medium));
+            body.add(detailRow("소분류",   e.small));
+            body.add(detailRow("내용",     e.item == null || e.item.trim().isEmpty() ? "(없음)" : e.item));
+            body.add(detailRow("금액",     won(e.amount)));
+            body.add(detailRow("고정지출", e.fixed ? "✔ 고정지출로 등록됨" : "일반 지출"));
+
+            JScrollPane bodyScroll = new JScrollPane(body);
+            bodyScroll.setBorder(BorderFactory.createEmptyBorder());
+            bodyScroll.getVerticalScrollBar().setUnitIncrement(16);
+            root.add(bodyScroll, BorderLayout.CENTER);
+
+            // ── 하단 닫기 및 삭제 버튼 ──
+            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 12));
+            bottom.setBackground(WHITE);
+            bottom.setBorder(new MatteBorder(1, 0, 0, 0, BORDER));
+            
+            JButton del = flatButton("삭제");
+            del.setForeground(RED);
+            del.addActionListener(ev -> {
+                int res = JOptionPane.showConfirmDialog(dlg, "정말 이 지출 내역을 삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
+                if (res == JOptionPane.YES_OPTION) {
+                    new SwingWorker<JsonObject, Void>() {
+                        @Override
+                        protected JsonObject doInBackground() throws Exception {
+                            // 백엔드 API (DELETE /api/expenses/{id}) 호출
+                            return httpDelete("http://localhost:8080/api/expenses/" + e.id);
+                        }
+                        @Override
+                        protected void done() {
+                            state.expenses.remove(e);
+                            dlg.dispose();
+                            refreshAll();
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this, "삭제되었습니다.", "삭제 완료", JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    }.execute();
+                }
+            });
+            
+            JButton close = primaryButton("닫기");
+            close.addActionListener(ev -> dlg.dispose());
+            
+            bottom.add(del);
+            bottom.add(close);
+            root.add(bottom, BorderLayout.SOUTH);
+
+            dlg.setContentPane(root);
+            dlg.setVisible(true);
+        }
+
+        /** 상세 다이얼로그 한 줄 행 (라벨 + 값) */
+        JPanel detailRow(String label, String value) {
+            JPanel row = new JPanel(new BorderLayout(12, 0));
+            row.setBackground(WHITE);
+            row.setBorder(new CompoundBorder(
+                new MatteBorder(0, 0, 1, 0, new Color(242, 244, 246)),
+                new EmptyBorder(14, 24, 14, 24)
+            ));
+            JLabel lbl = new JLabel(label);
+            lbl.setFont(FONT_BOLD);
+            lbl.setForeground(MUTED);
+            lbl.setPreferredSize(new Dimension(80, 24));
+            JLabel val = new JLabel("<html>" + (value == null ? "" : value.replace("&", "&amp;").replace("<", "&lt;")) + "</html>");
+            val.setFont(FONT);
+            val.setForeground(TEXT);
+            row.add(lbl, BorderLayout.WEST);
+            row.add(val, BorderLayout.CENTER);
+            return row;
         }
 
         JPanel chartCard(String title, JComponent chart) {
@@ -1914,6 +2079,7 @@ public class GeojiTalchulApp extends JFrame {
         void rebuildExpenseTable() {
             if (tableModel == null) return;
             tableModel.setRowCount(0);
+            currentList.clear();
             String selected = (String) largeCombo.getSelectedItem();
             List<Expense> list = state.expenses.stream()
                     .filter(x -> "전체 지출 내역".equals(selected) || x.large.equals(selected))
@@ -1928,6 +2094,7 @@ public class GeojiTalchulApp extends JFrame {
                         e.small,
                         "-" + won(e.amount)
                 });
+                currentList.add(e);
             }
             if (list.isEmpty()) {
                 tableModel.addRow(new Object[]{"-", "지출 내역 없음", "", "", ""});
@@ -1943,7 +2110,10 @@ public class GeojiTalchulApp extends JFrame {
 
     class PieChart extends JPanel {
         String mode = "대분류";
+        int timeMode = 1; // 기본값 1개월
+        
         public void setMode(String mode) { this.mode = mode; }
+        public void setTimeMode(int timeMode) { this.timeMode = timeMode; }
         
         // 🌟 마우스 호버 상태를 저장할 변수들
         String hoveredCategory = null;
@@ -2006,7 +2176,7 @@ public class GeojiTalchulApp extends JFrame {
 
             slices.clear(); 
 
-            Map<String,Long> map = mode.equals("대분류") ? state.largeTotals() : state.mediumTotals();
+            Map<String,Long> map = mode.equals("대분류") ? state.largeTotals(timeMode) : state.mediumTotals(timeMode);
             long total = map.values().stream().mapToLong(Long::longValue).sum();
             if (total == 0) {
                 g2.setColor(MUTED);
@@ -2101,7 +2271,7 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     class TrendChart extends JPanel {
-        int mode = 6; // 1, 6, 12
+        int mode = 1; // 1, 6, 12
         public void setMode(int mode) { this.mode = mode; }
 
         TrendChart() { setPreferredSize(new Dimension(400, 230)); setBackground(WHITE); }
@@ -2118,7 +2288,7 @@ public class GeojiTalchulApp extends JFrame {
                 g2.drawLine(left,yy,left+w,yy);
             }
 
-            YearMonth now = YearMonth.of(2026, 8);
+            YearMonth now = YearMonth.now();
             long max = 1;
             int count = mode == 1 ? now.lengthOfMonth() : mode; // 1개월은 해당 월의 일수
             long[] vals = new long[count];
@@ -3380,11 +3550,10 @@ public class GeojiTalchulApp extends JFrame {
                         try {
                             JsonObject res = get();
                             if (res != null) {
-                                // 일단 화면(상태)에도 추가해서 즉시 반영되게 함
-                                state.addExpense(l, m, s, content, won, d);
+                                // DB에 정상 저장되었으므로 서버에서 전체 내역과 올바른 expenseId를 다시 불러와 동기화
                                 state.points += 20;
                                 dlg.dispose();
-                                refreshAll();
+                                loadMyExpensesFromServer();
                                 
                                 if (state.budgetUsage() >= 1) {
                                     JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다.\n\n⚠ 예산을 초과했습니다.", "예산 경고", JOptionPane.WARNING_MESSAGE);
@@ -3424,35 +3593,56 @@ public class GeojiTalchulApp extends JFrame {
         LinkedHashSet<String> ownedSkins = new LinkedHashSet<>(Arrays.asList("poorman.png"));
         String currentSkin = "poorman.png";
 
-        List<String> largeCategories=Arrays.asList(
-                "주거/통신","금융/보험","정기구독","식비","교통/차량",
-                "생활/쇼핑","취미/여가","경조사/선물","의료/건강","유지/수리"
+        List<String> largeCategories = Arrays.asList(
+                "식비", "교통/차량", "주거/통신", "패션/쇼핑", "문화/취미", "뷰티/미용", "건강/의료", "자기계발/교육"
         );
 
-        Map<String,List<String>> mediumMap=new LinkedHashMap<>();
+        Map<String, List<String>> mediumMap = new LinkedHashMap<>();
+        {
+            mediumMap.put("식비", Arrays.asList("배달음식", "외식/식당", "카페/디저트", "식료품/장보기"));
+            mediumMap.put("교통/차량", Arrays.asList("대중교통", "주유/세차", "택시"));
+            mediumMap.put("주거/통신", Arrays.asList("월세", "관리비/공과금", "통신비/인터넷"));
+            mediumMap.put("패션/쇼핑", Arrays.asList("의류", "패션잡화", "생활용품"));
+            mediumMap.put("문화/취미", Arrays.asList("영화/공연", "도서/자기계발", "운동/헬스"));
+            mediumMap.put("뷰티/미용", Arrays.asList("화장품/스킨케어", "헤어/미용실"));
+            mediumMap.put("건강/의료", Arrays.asList("병원/약국", "건강보조식품")); // DB엔 없지만 임의로 추가
+            mediumMap.put("자기계발/교육", Arrays.asList("자격증/시험응시료", "스터디카페/독서실"));
+        }
+        
         List<Expense> expenses=new ArrayList<>();
         Set<Integer> fixedExpenseIds=new HashSet<>();
 
         void addExpense(String large,String medium,String small,String item,long amount,LocalDate date){
             expenses.add(new Expense(nextId++,large,medium,small,item,amount,date,false));
         }
+        
+        void addDbExpense(int id, String large,String medium,String small,String item,long amount,LocalDate date){
+            expenses.add(new Expense(id,large,medium,small,item,amount,date,false));
+        }
 
-        long totalSpent(){ return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8))).mapToLong(e->e.amount).sum(); }
+        long totalSpent(){ return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.now())).mapToLong(e->e.amount).sum(); }
         double budgetUsage(){ return budget==0?0:totalSpent()/(double)budget; }
 
-        Map<String,Long> largeTotals(){
-            return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
+        Map<String,Long> largeTotals(){ return largeTotals(1); }
+        Map<String,Long> largeTotals(int months){
+            LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            return expenses.stream().filter(e->!e.date.isBefore(startDate))
                     .collect(Collectors.groupingBy(e->e.large,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
-        Map<String,Long> mediumTotals(){
-            return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026,8)))
+        Map<String,Long> mediumTotals(){ return mediumTotals(1); }
+        Map<String,Long> mediumTotals(int months){
+            LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            return expenses.stream().filter(e->!e.date.isBefore(startDate))
                     .collect(Collectors.groupingBy(e->e.medium,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
         List<Expense> fixedCandidates(){
+            // 최근 3개월 범위를 동적으로 계산
+            LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
+            LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
             Map<String,List<Expense>> map=expenses.stream()
-                    .filter(e->e.date.isAfter(LocalDate.of(2026,5,31)) && e.date.isBefore(LocalDate.of(2026,9,1)))
+                    .filter(e->!e.date.isBefore(threeMonthsAgo) && e.date.isBefore(nextMonthStart))
                     .collect(Collectors.groupingBy(e->e.medium+"|"+e.amount,LinkedHashMap::new,Collectors.toList()));
             return map.values().stream()
                     .filter(v->v.size()>=3)
@@ -3463,11 +3653,14 @@ public class GeojiTalchulApp extends JFrame {
         int fixedExpenseCandidateCount(){ return fixedCandidates().size(); }
 
         long fixedCandidateRepeatCount(Expense candidate){
+            LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
+            LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
             return expenses.stream()
-                    .filter(e -> e.date.isAfter(LocalDate.of(2026,5,31)) && e.date.isBefore(LocalDate.of(2026,9,1)))
+                    .filter(e -> !e.date.isBefore(threeMonthsAgo) && e.date.isBefore(nextMonthStart))
                     .filter(e -> e.medium.equals(candidate.medium) && e.amount == candidate.amount)
                     .count();
         }
+
 
         String fixedCandidateKey(){
             return fixedCandidates().stream()

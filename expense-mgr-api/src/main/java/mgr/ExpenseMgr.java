@@ -89,6 +89,36 @@ public class ExpenseMgr {
         return total;
     }
 
+    /**
+     * 대분류 이름과 중분류 이름으로 medium_id를 조회합니다.
+     * 클라이언트가 이름으로 POST할 때 사용합니다.
+     * @return mediumId, 찾지 못하면 -1
+     */
+    public int getMediumIdByName(String largeName, String mediumName) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        int mediumId = -1;
+        try {
+            con = pool.getConnection();
+            String sql = "SELECT m.medium_id FROM medium_category m " +
+                         "JOIN large_category l ON m.large_id = l.large_id " +
+                         "WHERE l.large_name = ? AND m.medium_name = ?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setString(1, largeName);
+            pstmt.setString(2, mediumName);
+            rs = pstmt.executeQuery();
+            if (rs.next()) {
+                mediumId = rs.getInt("medium_id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.freeConnection(con, pstmt, rs);
+        }
+        return mediumId;
+    }
+
     public boolean insertExpense(ExpenseBean bean) {
         Connection con = null;
         PreparedStatement pstmt = null;
