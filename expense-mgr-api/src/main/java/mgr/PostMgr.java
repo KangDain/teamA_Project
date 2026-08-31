@@ -19,9 +19,9 @@ public class PostMgr {
         Vector<PostBean> vlist = new Vector<>();
         try {
             con = pool.getConnection();
-            String sql = "SELECT p.post_id, p.user_id, p.content, p.image_data, p.like_count, p.created_at, " +
+            String sql = "SELECT p.post_id, p.user_id, u.user_name, u.profile_image, p.content, p.image_data, p.like_count, p.created_at, " +
                          "(SELECT COUNT(*) FROM post_like pl WHERE pl.post_id = p.post_id AND pl.user_id = ?) AS is_liked " +
-                         "FROM post p ORDER BY p.created_at DESC";
+                         "FROM post p JOIN user u ON p.user_id = u.user_id ORDER BY p.created_at DESC";
             pstmt = con.prepareStatement(sql);
             pstmt.setInt(1, userId);
             rs = pstmt.executeQuery();
@@ -29,6 +29,8 @@ public class PostMgr {
                 PostBean bean = new PostBean();
                 bean.setPostId(rs.getInt("post_id"));
                 bean.setUserId(rs.getInt("user_id"));
+                bean.setUserName(rs.getString("user_name"));
+                bean.setProfileImage(rs.getString("profile_image"));
                 bean.setContent(rs.getString("content"));
                 bean.setImageData(rs.getString("image_data"));
                 bean.setLikeCount(rs.getInt("like_count"));

@@ -20,7 +20,8 @@ public class ChallengeMgr {
         Vector<TeamRoomBean> vlist = new Vector<>();
         try {
             con = pool.getConnection();
-            String sql = "SELECT r.room_id, r.owner_id, u.user_name AS owner_name, r.room_name, r.start_date, r.end_date, r.created_at " +
+            String sql = "SELECT r.room_id, r.owner_id, u.user_name AS owner_name, r.room_name, r.start_date, r.end_date, r.created_at, " +
+                         "(SELECT GROUP_CONCAT(u2.user_name SEPARATOR ',') FROM team_member tm JOIN user u2 ON tm.user_id = u2.user_id WHERE tm.room_id = r.room_id) AS member_names " +
                          "FROM team_room r JOIN user u ON r.owner_id = u.user_id ORDER BY r.start_date DESC";
             pstmt = con.prepareStatement(sql);
             rs = pstmt.executeQuery();
@@ -33,6 +34,13 @@ public class ChallengeMgr {
                 bean.setStartDate(rs.getDate("start_date"));
                 bean.setEndDate(rs.getDate("end_date"));
                 bean.setCreatedAt(rs.getTimestamp("created_at"));
+                
+                String memberNames = rs.getString("member_names");
+                if (memberNames != null && !memberNames.isEmpty()) {
+                    for (String name : memberNames.split(",")) {
+                        bean.getMembers().add(name);
+                    }
+                }
                 vlist.add(bean);
             }
         } catch (Exception e) {
@@ -75,6 +83,25 @@ public class ChallengeMgr {
             pstmt.setInt(1, bean.getRoomId());
             pstmt.setInt(2, bean.getUserId());
             pstmt.setInt(3, bean.getGoalAmount());
+            if (pstmt.executeUpdate() == 1) flag = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.freeConnection(con, pstmt);
+        }
+        return flag;
+    }
+
+    public boolean deleteRoom(int roomId, int ownerId) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        boolean flag = false;
+        try {
+            con = pool.getConnection();
+            String sql = "DELETE FROM team_room WHERE room_id = ? AND owner_id = ?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setInt(1, roomId);
+            pstmt.setInt(2, ownerId);
             if (pstmt.executeUpdate() == 1) flag = true;
         } catch (Exception e) {
             e.printStackTrace();

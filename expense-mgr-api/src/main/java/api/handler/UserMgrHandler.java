@@ -35,6 +35,44 @@ public class UserMgrHandler extends BaseMgrHandler {
             String loginId = params.get("loginId");
             boolean duplicate = userMgr.isLoginIdDuplicate(loginId);
             sendJsonResponse(exchange, 200, Map.of("loginId", loginId, "duplicate", duplicate));
+        } else if ("POST".equalsIgnoreCase(method) && path.contains("/update")) {
+            String[] parts = path.split("/");
+            if (parts.length >= 4) {
+                int userId = Integer.parseInt(parts[3]);
+                
+                @SuppressWarnings("unchecked")
+                Map<String, String> req = parseRequestBody(exchange, Map.class);
+                
+                UserBean user = userMgr.getUserById(userId);
+                if (user == null) {
+                    sendError(exchange, 404, "존재하지 않는 회원입니다.");
+                    return;
+                }
+                
+                String newName = req.getOrDefault("userName", "");
+                String oldPass = req.getOrDefault("oldPassword", "");
+                String newPass = req.getOrDefault("newPassword", "");
+                
+                boolean updatedName = false;
+                if (!newName.isEmpty() && !newName.equals(user.getUserName())) {
+                    user.setUserName(newName);
+                    userMgr.updateUserInfo(user);
+                    updatedName = true;
+                }
+                
+                boolean updatedPass = false;
+                if (!newPass.isEmpty()) {
+                    if (user.getPassword().equals(oldPass)) {
+                        userMgr.updatePassword(userId, newPass);
+                        updatedPass = true;
+                    } else {
+                        sendJsonResponse(exchange, 400, Map.of("success", false, "message", "기존 비밀번호가 일치하지 않습니다."));
+                        return;
+                    }
+                }
+                
+                sendJsonResponse(exchange, 200, Map.of("success", true, "message", "회원 정보가 수정되었습니다.", "newName", user.getUserName()));
+            }
         } else if ("GET".equalsIgnoreCase(method)) {
             String[] parts = path.split("/");
             if (parts.length >= 4) {

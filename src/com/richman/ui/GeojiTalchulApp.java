@@ -127,6 +127,7 @@ public class GeojiTalchulApp extends JFrame {
     final JPanel content = new JPanel(new CardLayout());
     final JLabel pointLabel = new JLabel();
     final JLabel userLabel = new JLabel("프로거지 님");
+    final JLabel sidebarAvatarLabel = new JLabel();
 
     HomePanel homePanel;
     CalendarPanel calendarPanel;
@@ -177,6 +178,88 @@ public class GeojiTalchulApp extends JFrame {
         ((CardLayout) rootContainer.getLayout()).show(rootContainer, "AUTH_LOGIN");
 
         refreshAll();
+        loadCategoriesFromServer();
+    }
+
+    void loadCategoriesFromServer() {
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/categories/large");
+                if (el != null && el.isJsonArray()) {
+                    java.util.List<String> largeCats = new java.util.ArrayList<>();
+                    java.util.Map<String, java.util.List<String>> tempMediumMap = new java.util.LinkedHashMap<>();
+                    for (com.google.gson.JsonElement item : el.getAsJsonArray()) {
+                        com.google.gson.JsonObject obj = item.getAsJsonObject();
+                        int largeId = obj.get("largeId").getAsInt();
+                        String largeName = obj.get("largeName").getAsString();
+                        largeCats.add(largeName);
+                        com.google.gson.JsonElement mediumEl = httpGetElement("http://localhost:8080/api/categories/medium/by-large/" + largeId);
+                        java.util.List<String> mediumCats = new java.util.ArrayList<>();
+                        if (mediumEl != null && mediumEl.isJsonArray()) {
+                            for (com.google.gson.JsonElement mItem : mediumEl.getAsJsonArray()) {
+                                mediumCats.add(mItem.getAsJsonObject().get("mediumName").getAsString());
+                            }
+                        }
+                        tempMediumMap.put(largeName, mediumCats);
+                    }
+                    state.largeCategories = largeCats;
+                    state.mediumMap = tempMediumMap;
+                }
+                return null;
+            }
+        }.execute();
+    }
+
+    void loadMySettingsFromServer() {
+        new SwingWorker<com.google.gson.JsonObject, Void>() {
+            @Override
+            protected com.google.gson.JsonObject doInBackground() throws Exception {
+                com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/settings?userId=" + currentUserId);
+                if (el != null && el.isJsonObject()) {
+                    return el.getAsJsonObject();
+                }
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    com.google.gson.JsonObject obj = get();
+                    if (obj != null && obj.has("alertThreshold")) {
+                        state.alertThreshold = obj.get("alertThreshold").getAsInt();
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }.execute();
+    }
+
+    void loadMyBudgetFromServer() {
+        new SwingWorker<com.google.gson.JsonElement, Void>() {
+            @Override
+            protected com.google.gson.JsonElement doInBackground() throws Exception {
+                return httpGetElement("http://localhost:8080/api/budgets?userId=" + currentUserId);
+            }
+            @Override
+            protected void done() {
+                try {
+                    com.google.gson.JsonElement el = get();
+                    if (el != null && el.isJsonArray()) {
+                        for (com.google.gson.JsonElement item : el.getAsJsonArray()) {
+                            com.google.gson.JsonObject obj = item.getAsJsonObject();
+                            String scope = obj.has("budgetScope") ? obj.get("budgetScope").getAsString() : "";
+                            if ("TOTAL".equals(scope) && obj.has("limitAmount")) {
+                                state.budget = obj.get("limitAmount").getAsLong();
+                                refreshAll();
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }.execute();
     }
 
     // 서버에서 내 지출 내역을 싹 긁어오는 메서드
@@ -254,55 +337,7 @@ public class GeojiTalchulApp extends JFrame {
         }
     }
 
-    // 서버에서 커뮤니티 피드 싹 긁어오기
-    void loadCommunityFeed() {
-        new SwingWorker<com.google.gson.JsonElement, Void>() {
-            @Override
-            protected com.google.gson.JsonElement doInBackground() throws Exception {
-                return httpGetElement("http://localhost:8080/api/posts");
-            }
-            @Override
-            protected void done() {
-                try {
-                    com.google.gson.JsonElement el = get();
-                    if (el == null) return;
 
-                    com.google.gson.JsonArray arr = null;
-                    if (el.isJsonObject()) {
-                        com.google.gson.JsonObject res = el.getAsJsonObject();
-                        if (res.has("data")) arr = res.getAsJsonArray("data");
-                    } else if (el.isJsonArray()) {
-                        arr = el.getAsJsonArray();
-                    }
-
-                    if (arr == null || arr.size() == 0) return;
-
-                    communityPanel.feedContainer.removeAll();
-                    for (com.google.gson.JsonElement item : arr) {
-                        JsonObject obj = item.getAsJsonObject();
-                        String author  = obj.has("author")   ? obj.get("author").getAsString()   : "알수없음";
-                        String content = obj.has("content")  ? obj.get("content").getAsString()  : "";
-                        int likes      = obj.has("likes")    ? obj.get("likes").getAsInt()       : 0;
-                        int comments   = obj.has("comments") ? obj.get("comments").getAsInt()    : 0;
-                        String base64Img = obj.has("image") && !obj.get("image").isJsonNull()
-                                ? obj.get("image").getAsString() : "";
-
-                        ImageIcon imgIcon = null;
-                        if (!base64Img.isEmpty()) {
-                            byte[] bytes = java.util.Base64.getDecoder().decode(base64Img);
-                            imgIcon = new ImageIcon(bytes);
-                        }
-                        communityPanel.feedContainer.add(communityPanel.buildInstaCard(author, content, imgIcon, likes, comments));
-                        communityPanel.feedContainer.add(Box.createVerticalStrut(20));
-                    }
-                    communityPanel.feedContainer.revalidate();
-                    communityPanel.feedContainer.repaint();
-                } catch (Exception ex) {
-                    System.err.println("피드 불러오기 실패: " + ex.getMessage());
-                }
-            }
-        }.execute();
-    }
 
     JPanel buildLoginPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
@@ -370,12 +405,19 @@ public class GeojiTalchulApp extends JFrame {
                         if (res != null && res.has("userId")) {
                             currentUserId = res.get("userId").getAsInt();
 
-                            // 로그인 성공 후 내 지출 내역 가져오기
+                            // 로그인 성공 후 데이터 동기화
+                            loadMyBudgetFromServer();
+                            loadMySettingsFromServer();
                             loadMyExpensesFromServer();
-                            loadCommunityFeed();
+                            communityPanel.loadPostsFromServer();
 
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
                             userLabel.setText(userName + " 님");
+                            
+                            // 로그인 시 포인트 잔액 동기화
+                            if (res.has("pointBalance")) {
+                                state.points = res.get("pointBalance").getAsInt();
+                            }
                             
                             // 🌟 [추가할 부분] 백엔드가 프로필 사진을 줬는지 검사!
                             try {
@@ -384,20 +426,22 @@ public class GeojiTalchulApp extends JFrame {
                                     byte[] imgBytes = java.util.Base64.getDecoder().decode(base64);
                                     currentUserProfileImage = new ImageIcon(imgBytes).getImage();
                                 } else {
-                                    // 아직 API 안 만들어졌거나 사진 등록 안 한 유저면 기본 거지 세팅
                                     ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
                                     currentUserProfileImage = pIcon.getImage();
                                 }
                             } catch (Exception imgEx) {
-                                // 이미지 변환 실패 시 안전하게 거지 세팅
                                 currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
+                            }
+                            if (currentUserProfileImage != null) {
+                                Image sideImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+                                sidebarAvatarLabel.setIcon(new ImageIcon(sideImg));
                             }
                             // 🌟 ----------------------------------------------------
 
                             idField.setText("");
                             pwField.setText("");
                             ((CardLayout) rootContainer.getLayout()).show(rootContainer, "MAIN_APP");
-                            refreshAll();
+                            showCard("HOME");
                         } else {
                             String msg = (res != null && res.has("message")) ? res.get("message").getAsString() : "아이디 또는 비밀번호가 일치하지 않습니다.";
                             JOptionPane.showMessageDialog(GeojiTalchulApp.this, msg, "로그인 실패", JOptionPane.ERROR_MESSAGE);
@@ -642,18 +686,20 @@ public class GeojiTalchulApp extends JFrame {
         user.setBackground(WHITE);
         user.setBorder(new CompoundBorder(new MatteBorder(1, 0, 0, 0, BORDER),
                 new EmptyBorder(14, 16, 14, 16)));
-        ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
-        Image pImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
-        JLabel avatar = new JLabel(new ImageIcon(pImg), SwingConstants.CENTER);
+        if (currentUserProfileImage != null) {
+            Image pImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+            sidebarAvatarLabel.setIcon(new ImageIcon(pImg));
+        } else {
+            ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+            Image pImg = pIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+            sidebarAvatarLabel.setIcon(new ImageIcon(pImg));
+        }
+        sidebarAvatarLabel.setHorizontalAlignment(SwingConstants.CENTER);
         
-        avatar.setOpaque(true);
-        avatar.setBackground(new Color(232, 237, 241));
-        avatar.setBorder(new CircleBorder(new Color(232,237,241), 28));
-        avatar.setPreferredSize(new Dimension(42, 42));
-        avatar.setBackground(new Color(232, 237, 241));
-        avatar.setForeground(MUTED);
-        avatar.setBorder(new CircleBorder(new Color(232,237,241), 28));
-        avatar.setPreferredSize(new Dimension(42, 42));
+        sidebarAvatarLabel.setOpaque(true);
+        sidebarAvatarLabel.setBackground(new Color(232, 237, 241));
+        sidebarAvatarLabel.setBorder(new CircleBorder(new Color(232,237,241), 28));
+        sidebarAvatarLabel.setPreferredSize(new Dimension(42, 42));
 
         JPanel userText = new JPanel();
         userText.setLayout(new BoxLayout(userText, BoxLayout.Y_AXIS));
@@ -663,7 +709,7 @@ public class GeojiTalchulApp extends JFrame {
         pointLabel.setFont(FONT_BOLD);
         userText.add(pointLabel);
         // ... (avatar, userText 세팅 코드 유지) ...
-        user.add(avatar, BorderLayout.WEST);
+        user.add(sidebarAvatarLabel, BorderLayout.WEST);
         user.add(userText, BorderLayout.CENTER);
 
         // 🌟 [추가] 마우스 커서를 손가락 모양으로 바꾸고 클릭 이벤트 달기!
@@ -762,6 +808,9 @@ public class GeojiTalchulApp extends JFrame {
                                     ImageIcon newIcon = new ImageIcon(selectedFile.getAbsolutePath());
                                     Image newImg = newIcon.getImage().getScaledInstance(-1, 38, Image.SCALE_SMOOTH);
                                     currentProfileImg.setIcon(new ImageIcon(newImg));
+                                    currentUserProfileImage = newIcon.getImage();
+                                    Image sideImg = currentUserProfileImage.getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+                                    sidebarAvatarLabel.setIcon(new ImageIcon(sideImg));
                                     
                                 } else {
                                     String msg = (res != null && res.has("message")) ? res.get("message").getAsString() : "업로드 실패";
@@ -784,13 +833,17 @@ public class GeojiTalchulApp extends JFrame {
         
         // 🌟 2. 폼 항목들 순서대로 꽂아 넣기 (중복 방지!)
         addFormRow(card, g, r++, "프로필", profileBox); 
-        addFormRow(card, g, r++, "닉네임", new JTextField(userLabel.getText().replace(" 님", "")));
-        addFormRow(card, g, r++, "기존 비밀번호", new JPasswordField());
-        addFormRow(card, g, r++, "새 비밀번호", new JPasswordField());
+        JTextField nameField = new JTextField(userLabel.getText().replace(" 님", ""));
+        JPasswordField oldPwField = new JPasswordField();
+        JPasswordField newPwField = new JPasswordField();
+        
+        addFormRow(card, g, r++, "닉네임", nameField);
+        addFormRow(card, g, r++, "기존 비밀번호", oldPwField);
+        addFormRow(card, g, r++, "새 비밀번호", newPwField);
         
         root.add(card, BorderLayout.CENTER);
 
-        // 🌟 3. 하단 취소 / 저장 버튼
+        // 하단 취소 / 저장 버튼
         JPanel btnBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         btnBox.setOpaque(false);
         btnBox.setBorder(new EmptyBorder(15, 0, 0, 0));
@@ -799,8 +852,49 @@ public class GeojiTalchulApp extends JFrame {
         cancel.addActionListener(e -> dlg.dispose());
         JButton save = primaryButton("정보 저장");
         save.addActionListener(e -> {
-            JOptionPane.showMessageDialog(dlg, "회원 정보가 성공적으로 수정되었습니다.", "수정 완료", JOptionPane.INFORMATION_MESSAGE);
-            dlg.dispose();
+            String newName = nameField.getText().trim();
+            String oldPass = new String(oldPwField.getPassword());
+            String newPass = new String(newPwField.getPassword());
+            
+            if (newName.isEmpty()) {
+                JOptionPane.showMessageDialog(dlg, "닉네임을 입력해주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            save.setEnabled(false);
+            new SwingWorker<JsonObject, Void>() {
+                @Override
+                protected JsonObject doInBackground() throws Exception {
+                    JsonObject req = new JsonObject();
+                    req.addProperty("userName", newName);
+                    if (!newPass.isEmpty()) {
+                        req.addProperty("oldPassword", oldPass);
+                        req.addProperty("newPassword", newPass);
+                    }
+                    return httpPost("http://localhost:8080/api/users/" + currentUserId + "/update", req.toString());
+                }
+                
+                @Override
+                protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        JsonObject res = get();
+                        if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
+                            JOptionPane.showMessageDialog(dlg, "회원 정보가 성공적으로 수정되었습니다.", "수정 완료", JOptionPane.INFORMATION_MESSAGE);
+                            if (res.has("newName")) {
+                                userLabel.setText(res.get("newName").getAsString() + " 님");
+                            }
+                            refreshAll();
+                            dlg.dispose();
+                        } else {
+                            String msg = res != null && res.has("message") ? res.get("message").getAsString() : "수정 실패";
+                            JOptionPane.showMessageDialog(dlg, msg, "실패", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) {
+                        JOptionPane.showMessageDialog(dlg, "서버 연결 오류: " + ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                    }
+                }
+            }.execute();
         });
         
         btnBox.add(cancel);
@@ -923,10 +1017,10 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     void showNotifications() {
-        String msg = state.budgetUsage() >= 1.0
-                ? "예산을 초과했습니다.\n지출 내역을 확인해 보세요."
-                : state.fixedExpenseCandidateCount() > 0
+        String msg = state.fixedExpenseCandidateCount() > 0
                 ? "최근 3개월 반복 지출 후보가 " + state.fixedExpenseCandidateCount() + "건 발견되었습니다."
+                : state.budgetUsage() >= 1.0
+                ? "예산을 초과했습니다.\n지출 내역을 확인해 보세요."
                 : "새로운 알림이 없습니다.";
         JOptionPane.showMessageDialog(this, msg, "알림", JOptionPane.INFORMATION_MESSAGE);
     }
@@ -978,8 +1072,8 @@ public class GeojiTalchulApp extends JFrame {
         budgetInfo.setBorder(new EmptyBorder(0, 0, 16, 0));
         form.add(budgetInfo);
 
-        JCheckBox push = new JCheckBox("예산 경고 알림", true);
-        JCheckBox fixed = new JCheckBox("고정지출 후보 자동 알림", true);
+        JCheckBox push = new JCheckBox("예산 초과 알림", state.alertThreshold <= 100);
+        JCheckBox fixed = new JCheckBox("고정지출 자동 알림", true);
         push.setBackground(WHITE);
         fixed.setBackground(WHITE);
         form.add(push);
@@ -990,16 +1084,17 @@ public class GeojiTalchulApp extends JFrame {
 
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         bottom.setBackground(WHITE);
-        JButton cancel = new JButton("취소");
-        cancel.setFocusPainted(false);
-        JButton save = primaryButton("설정 저장");
+        JButton cancel = flatButton("취소");
         cancel.addActionListener(e -> dlg.dispose());
-        // 예산 설정하면 서버로
+        JButton save = primaryButton("저장");
+        // 설정 저장
         save.addActionListener(e -> {
             String raw = budgetField.getText().replace(",", "").trim();
             try {
                 long newBudget = Long.parseLong(raw);
                 if (newBudget <= 0) throw new NumberFormatException();
+                
+                int newThreshold = push.isSelected() ? 80 : 999;
                 
                 save.setEnabled(false);
                 save.setText("저장 중...");
@@ -1008,15 +1103,23 @@ public class GeojiTalchulApp extends JFrame {
                     protected JsonObject doInBackground() throws Exception {
                         JsonObject body = new JsonObject();
                         body.addProperty("userId", currentUserId);
-                        body.addProperty("budgetAmount", newBudget);
-                        return httpPost("http://localhost:8080/api/budgets", body.toString()); // 예산 업데이트 API
+                        body.addProperty("limitAmount", newBudget);
+                        body.addProperty("budgetScope", "TOTAL");
+                        httpPost("http://localhost:8080/api/budgets/total", body.toString()); // 예산 업데이트 API
+                        
+                        JsonObject settingBody = new JsonObject();
+                        settingBody.addProperty("userId", currentUserId);
+                        settingBody.addProperty("alertThreshold", newThreshold);
+                        settingBody.addProperty("alertWeekday", fixed.isSelected() ? "월" : "");
+                        return httpPost("http://localhost:8080/api/settings", settingBody.toString()); // 알림 설정 API
                     }
                     @Override
                     protected void done() {
                         state.budget = newBudget;
+                        state.alertThreshold = newThreshold;
                         dlg.dispose();
                         refreshAll();
-                        JOptionPane.showMessageDialog(GeojiTalchulApp.this, "목표 예산이 " + won(newBudget) + "으로 설정되었습니다.", "설정 완료", JOptionPane.INFORMATION_MESSAGE);
+                        JOptionPane.showMessageDialog(GeojiTalchulApp.this, "설정이 성공적으로 저장되었습니다.", "저장 완료", JOptionPane.INFORMATION_MESSAGE);
                     }
                 }.execute();
             } catch (NumberFormatException ex) {
@@ -1044,7 +1147,8 @@ public class GeojiTalchulApp extends JFrame {
         PieChart homePie = new PieChart();
         JPanel alertBanner;
         JLabel homeCharacter; 
-        List<String> friends = new ArrayList<>(Arrays.asList("절약왕김씨", "소비요정", "통장지킴이")); 
+        // friendId -> friendUserName 매핑 (DB에서 불러온 데이터)
+        Map<Integer, String> friendMap = new java.util.LinkedHashMap<>();
 
         HomePanel() {
             setLayout(new BorderLayout(0, 20)); 
@@ -1089,106 +1193,273 @@ public class GeojiTalchulApp extends JFrame {
         
         void showFriendsDialog() {
             JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "친구 관리", true);
-            d.setSize(400, 500);
+            d.setSize(450, 550);
             d.setLocationRelativeTo(this);
             d.getContentPane().setBackground(BG);
             
-            JPanel p = new JPanel(new BorderLayout(0, 15));
-            p.setOpaque(false);
-            p.setBorder(new EmptyBorder(20, 20, 20, 20));
+            JTabbedPane tabs = new JTabbedPane();
             
-            JPanel head = new JPanel(new BorderLayout());
-            head.setOpaque(false);
-            JLabel title = new JLabel("내 친구 목록");
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            // --- 첫번째 탭: 내 친구 목록 ---
+            JPanel myFriendsTab = new JPanel(new BorderLayout(0, 15));
+            myFriendsTab.setOpaque(false);
+            myFriendsTab.setBorder(new EmptyBorder(20, 20, 20, 20));
             
             JPanel addBox = new JPanel(new BorderLayout(5, 0));
             addBox.setOpaque(false);
             JTextField addTf = new JTextField(10);
             addTf.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-            JButton addBtn = primaryButton("추가");
-            addBtn.setPreferredSize(new Dimension(70, 32));
+            addTf.setToolTipText("친구의 로그인 아이디를 입력하세요");
+            JButton addBtn = primaryButton("친구신청");
+            addBtn.setPreferredSize(new Dimension(95, 32));
+            addBtn.setMargin(new Insets(2, 4, 2, 4));
             addBox.add(addTf, BorderLayout.CENTER);
             addBox.add(addBtn, BorderLayout.EAST);
             
-            head.add(title, BorderLayout.WEST);
-            head.add(addBox, BorderLayout.EAST);
+            myFriendsTab.add(addBox, BorderLayout.NORTH);
             
             JPanel listContainer = new JPanel();
             listContainer.setLayout(new BoxLayout(listContainer, BoxLayout.Y_AXIS));
             listContainer.setBackground(WHITE);
-            
             JScrollPane scroll = new JScrollPane(listContainer);
             scroll.setBorder(BorderFactory.createLineBorder(BORDER));
             scroll.getVerticalScrollBar().setUnitIncrement(16);
+            myFriendsTab.add(scroll, BorderLayout.CENTER);
             
-            Runnable[] refreshBox = new Runnable[1];
-            refreshBox[0] = () -> {
-                listContainer.removeAll();
-                if (friends.isEmpty()) {
-                    JLabel empty = new JLabel("등록된 친구가 없습니다.");
-                    empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-                    empty.setForeground(MUTED);
-                    empty.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    empty.setBorder(new EmptyBorder(20, 0, 0, 0));
-                    listContainer.add(empty);
-                } else {
-                    for (String f : friends) {
-                        JPanel row = new JPanel(new BorderLayout());
-                        row.setBackground(WHITE);
-                        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
-                        row.setBorder(BorderFactory.createCompoundBorder(
-                            BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
-                            new EmptyBorder(10, 15, 10, 15)
-                        ));
-                        
-                        JLabel name = new JLabel(f);
-                        name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
-                        
-                        JButton del = new JButton("삭제");
-                        del.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
-                        del.setBackground(new Color(255, 235, 235));
-                        del.setForeground(RED);
-                        del.setBorder(new EmptyBorder(4, 10, 4, 10));
-                        del.setFocusPainted(false);
-                        del.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-                        del.addActionListener(ev -> {
-                            int res = JOptionPane.showConfirmDialog(d, "'" + f + "' 님을 친구 목록에서 삭제하시겠습니까?", "친구 삭제 확인", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-                            if (res == JOptionPane.YES_OPTION) {
-                                friends.remove(f);
-                                refreshBox[0].run();
+            // --- 두번째 탭: 받은 요청 ---
+            JPanel requestsTab = new JPanel(new BorderLayout(0, 15));
+            requestsTab.setOpaque(false);
+            requestsTab.setBorder(new EmptyBorder(20, 20, 20, 20));
+            
+            JPanel reqContainer = new JPanel();
+            reqContainer.setLayout(new BoxLayout(reqContainer, BoxLayout.Y_AXIS));
+            reqContainer.setBackground(WHITE);
+            JScrollPane reqScroll = new JScrollPane(reqContainer);
+            reqScroll.setBorder(BorderFactory.createLineBorder(BORDER));
+            reqScroll.getVerticalScrollBar().setUnitIncrement(16);
+            requestsTab.add(reqScroll, BorderLayout.CENTER);
+            
+            tabs.addTab("내 친구", myFriendsTab);
+            tabs.addTab("받은 요청", requestsTab);
+            d.add(tabs);
+
+            Runnable[] loadData = new Runnable[1];
+            loadData[0] = () -> {
+                new SwingWorker<Void, Void>() {
+                    com.google.gson.JsonArray reqArr = new com.google.gson.JsonArray();
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/friends?userId=" + currentUserId);
+                        if (el != null && el.isJsonArray()) {
+                            friendMap.clear();
+                            for (com.google.gson.JsonElement item : el.getAsJsonArray()) {
+                                com.google.gson.JsonObject obj = item.getAsJsonObject();
+                                int fId = obj.has("friendId") ? obj.get("friendId").getAsInt() : -1;
+                                String fName = obj.has("friendUserName") ? obj.get("friendUserName").getAsString() : "알수없음";
+                                if (fId >= 0) friendMap.put(fId, fName);
                             }
-                        });
-                        
-                        row.add(name, BorderLayout.WEST);
-                        row.add(del, BorderLayout.EAST);
-                        listContainer.add(row);
+                        }
+                        com.google.gson.JsonElement reqEl = httpGetElement("http://localhost:8080/api/friends/requests?userId=" + currentUserId);
+                        if (reqEl != null && reqEl.isJsonArray()) {
+                            reqArr = reqEl.getAsJsonArray();
+                        }
+                        return null;
                     }
-                }
-                listContainer.revalidate();
-                listContainer.repaint();
+                    @Override
+                    protected void done() {
+                        // 1. 내 친구 렌더링
+                        listContainer.removeAll();
+                        if (friendMap.isEmpty()) {
+                            JLabel empty = new JLabel("등록된 친구가 없습니다.");
+                            empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            empty.setForeground(MUTED);
+                            empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                            empty.setBorder(new EmptyBorder(20, 0, 0, 0));
+                            listContainer.add(empty);
+                        } else {
+                            for (Map.Entry<Integer, String> entry : friendMap.entrySet()) {
+                                int fId = entry.getKey();
+                                String fName = entry.getValue();
+                                JPanel row = new JPanel(new BorderLayout());
+                                row.setBackground(WHITE);
+                                row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+                                row.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
+                                    new EmptyBorder(10, 15, 10, 15)
+                                ));
+                                JLabel name = new JLabel(fName);
+                                name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                                JButton del = new JButton("삭제");
+                                del.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                del.setBackground(new Color(255, 235, 235));
+                                del.setForeground(RED);
+                                del.setBorder(new EmptyBorder(4, 10, 4, 10));
+                                del.setFocusPainted(false);
+                                del.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                                del.addActionListener(ev -> {
+                                    int res = JOptionPane.showConfirmDialog(d, "'" + fName + "' 님을 친구 목록에서 삭제하시겠습니까?", "친구 삭제 확인", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                                    if (res == JOptionPane.YES_OPTION) {
+                                        del.setEnabled(false);
+                                        new SwingWorker<Boolean, Void>() {
+                                            @Override
+                                            protected Boolean doInBackground() throws Exception {
+                                                com.google.gson.JsonObject res = httpDelete("http://localhost:8080/api/friends?friendId=" + fId);
+                                                return res != null && res.has("success") && res.get("success").getAsBoolean();
+                                            }
+                                            @Override
+                                            protected void done() {
+                                                loadData[0].run();
+                                            }
+                                        }.execute();
+                                    }
+                                });
+                                row.add(name, BorderLayout.WEST);
+                                row.add(del, BorderLayout.EAST);
+                                listContainer.add(row);
+                            }
+                        }
+                        listContainer.revalidate();
+                        listContainer.repaint();
+                        
+                        // 2. 받은 요청 렌더링
+                        reqContainer.removeAll();
+                        if (reqArr.size() == 0) {
+                            tabs.setTitleAt(1, "받은 요청");
+                            JLabel empty = new JLabel("받은 요청이 없습니다.");
+                            empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            empty.setForeground(MUTED);
+                            empty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                            empty.setBorder(new EmptyBorder(20, 0, 0, 0));
+                            reqContainer.add(empty);
+                        } else {
+                            tabs.setTitleAt(1, "받은 요청 (" + reqArr.size() + ")");
+                            for (com.google.gson.JsonElement item : reqArr) {
+                                com.google.gson.JsonObject obj = item.getAsJsonObject();
+                                int fId = obj.has("friendId") ? obj.get("friendId").getAsInt() : -1;
+                                int reqUserId = obj.has("userId") ? obj.get("userId").getAsInt() : -1;
+                                String fName = obj.has("friendUserName") ? obj.get("friendUserName").getAsString() : "알수없음";
+                                
+                                JPanel row = new JPanel(new BorderLayout());
+                                row.setBackground(WHITE);
+                                row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+                                row.setBorder(BorderFactory.createCompoundBorder(
+                                    BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
+                                    new EmptyBorder(10, 15, 10, 15)
+                                ));
+                                JLabel name = new JLabel(fName);
+                                name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                                
+                                JPanel btnBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+                                btnBox.setOpaque(false);
+                                
+                                JButton acceptBtn = new JButton("수락");
+                                acceptBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                acceptBtn.setBackground(new Color(230, 245, 238));
+                                acceptBtn.setForeground(GREEN_DARK);
+                                acceptBtn.setBorder(new EmptyBorder(4, 10, 4, 10));
+                                acceptBtn.setFocusPainted(false);
+                                acceptBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                                
+                                JButton rejectBtn = new JButton("거절");
+                                rejectBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                rejectBtn.setBackground(new Color(255, 235, 235));
+                                rejectBtn.setForeground(RED);
+                                rejectBtn.setBorder(new EmptyBorder(4, 10, 4, 10));
+                                rejectBtn.setFocusPainted(false);
+                                rejectBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                                
+                                acceptBtn.addActionListener(ev -> {
+                                    acceptBtn.setEnabled(false);
+                                    rejectBtn.setEnabled(false);
+                                    new SwingWorker<Boolean, Void>() {
+                                        @Override
+                                        protected Boolean doInBackground() throws Exception {
+                                            com.google.gson.JsonObject res = httpPost(
+                                                "http://localhost:8080/api/friends/accept?friendId=" + fId + "&myUserId=" + currentUserId + "&requesterUserId=" + reqUserId, "");
+                                            return res != null && res.has("success") && res.get("success").getAsBoolean();
+                                        }
+                                        @Override
+                                        protected void done() {
+                                            loadData[0].run();
+                                            JOptionPane.showMessageDialog(d, fName + " 님의 친구 요청을 수락했습니다.");
+                                        }
+                                    }.execute();
+                                });
+                                
+                                rejectBtn.addActionListener(ev -> {
+                                    acceptBtn.setEnabled(false);
+                                    rejectBtn.setEnabled(false);
+                                    new SwingWorker<Boolean, Void>() {
+                                        @Override
+                                        protected Boolean doInBackground() throws Exception {
+                                            com.google.gson.JsonObject res = httpDelete("http://localhost:8080/api/friends?friendId=" + fId);
+                                            return res != null && res.has("success") && res.get("success").getAsBoolean();
+                                        }
+                                        @Override
+                                        protected void done() {
+                                            loadData[0].run();
+                                        }
+                                    }.execute();
+                                });
+                                
+                                btnBox.add(acceptBtn);
+                                btnBox.add(rejectBtn);
+                                row.add(name, BorderLayout.WEST);
+                                row.add(btnBox, BorderLayout.EAST);
+                                reqContainer.add(row);
+                            }
+                        }
+                        reqContainer.revalidate();
+                        reqContainer.repaint();
+                    }
+                }.execute();
             };
             
             addBtn.addActionListener(e -> {
-                String newF = addTf.getText().trim();
-                if (!newF.isEmpty()) {
-                    if (friends.contains(newF)) {
-                        JOptionPane.showMessageDialog(d, "이미 등록된 친구입니다.");
-                    } else {
-                        friends.add(newF);
-                        addTf.setText("");
-                        refreshBox[0].run();
-                        JOptionPane.showMessageDialog(d, newF + " 님을 친구로 추가했습니다!");
-                    }
+                String loginId = addTf.getText().trim();
+                if (loginId.isEmpty()) return;
+                if (loginId.equals(userLabel.getText().replace(" 님", ""))) {
+                    JOptionPane.showMessageDialog(d, "자기 자신에게 친구 요청을 보낼 수 없습니다.");
+                    return;
                 }
+                addBtn.setEnabled(false);
+                addBtn.setText("요청 중");
+                new SwingWorker<String, Void>() {
+                    @Override
+                    protected String doInBackground() throws Exception {
+                        com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/friends/search?loginId=" + URLEncoder.encode(loginId, "UTF-8"));
+                        if (el == null || !el.isJsonObject()) return "존재하지 않는 아이디입니다.";
+                        com.google.gson.JsonObject res = el.getAsJsonObject();
+                        if (!res.has("userId")) return "존재하지 않는 아이디입니다.";
+                        int targetUserId = res.get("userId").getAsInt();
+                        com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                        body.addProperty("userId", currentUserId);
+                        body.addProperty("friendUserId", targetUserId);
+                        com.google.gson.JsonObject addRes = httpPost("http://localhost:8080/api/friends", body.toString());
+                        if (addRes != null && addRes.has("success") && addRes.get("success").getAsBoolean()) {
+                            return null;
+                        }
+                        return "친구 요청에 실패했습니다. 이미 요청했거나 친구 상태입니다.";
+                    }
+                    @Override
+                    protected void done() {
+                        addBtn.setEnabled(true);
+                        addBtn.setText("친구요청");
+                        try {
+                            String err = get();
+                            if (err == null) {
+                                addTf.setText("");
+                                JOptionPane.showMessageDialog(d, loginId + " 님에게 친구 요청을 보냈습니다!");
+                            } else {
+                                JOptionPane.showMessageDialog(d, err, "요청 실패", JOptionPane.ERROR_MESSAGE);
+                            }
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(d, "서버 오류: " + ex.getMessage(), "오류", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                }.execute();
             });
             
-            refreshBox[0].run();
-            
-            p.add(head, BorderLayout.NORTH);
-            p.add(scroll, BorderLayout.CENTER);
-            
-            d.add(p);
+            loadData[0].run();
             d.setVisible(true);
         }
 
@@ -1207,10 +1478,11 @@ public class GeojiTalchulApp extends JFrame {
             detail.setBackground(WHITE);
             detail.setForeground(RED);
             detail.addActionListener(e -> {
-                if (state.budgetUsage() >= 1.0 || state.budgetUsage() >= state.alertThreshold / 100.0) {
-                    showCard("STATS");
-                } else if (state.fixedExpenseCandidateCount() > 0 && !state.fixedCandidateKey().equals(dismissedFixedCandidateKey)) {
+                boolean activeFixedAlert = state.fixedExpenseCandidateCount() > 0 && !state.fixedCandidateKey().equals(dismissedFixedCandidateKey);
+                if (activeFixedAlert) {
                     showFixedExpenseCandidateDialog();
+                } else if (state.budgetUsage() >= 1.0 || state.budgetUsage() >= state.alertThreshold / 100.0) {
+                    showCard("STATS");
                 }
             });
             banner.add(detail, BorderLayout.EAST);
@@ -1521,12 +1793,12 @@ public class GeojiTalchulApp extends JFrame {
             boolean activeFixedAlert = state.fixedExpenseCandidateCount() > 0
                     && !state.fixedCandidateKey().equals(dismissedFixedCandidateKey);
 
-            if (usage >= 1) {
+            if (activeFixedAlert) {
+                alertLabel.setText("●  고정 지출 후보 " + state.fixedExpenseCandidateCount() + "건을 발견했습니다. 확인해 보세요.");
+            } else if (usage >= 1) {
                 alertLabel.setText("이번 달 예산을 초과했습니다. 남은 기간 동안 지출을 줄이세요.");
             } else if (activeBudgetAlert) {
                 alertLabel.setText("비용비용! 이번 달 예산 " + (int)(usage * 100) + "% 사용. 남은 기간 동안 지출을 줄이세요.");
-            } else if (activeFixedAlert) {
-                alertLabel.setText("●  고정 지출 후보 " + state.fixedExpenseCandidateCount() + "건을 발견했습니다. 확인해 보세요.");
             } else {
                 alertLabel.setText("알림 확인 완료");
             }
@@ -2369,6 +2641,7 @@ public class GeojiTalchulApp extends JFrame {
     class CommunityPanel extends JPanel {
         JTabbedPane tabs = new JTabbedPane();
         DefaultListModel<String> rankModel = new DefaultListModel<>();
+        JLabel mineRankLabel = new JLabel("  내 순위 정보를 불러오는 중...");
         DefaultListModel<String> challengeModel = new DefaultListModel<>();
         
         // 🌟 칙칙한 리스트(feedModel) 삭제하고, 카드를 세로로 쌓을 새로운 컨테이너 장착!
@@ -2442,22 +2715,27 @@ public class GeojiTalchulApp extends JFrame {
             });
             p.add(new JScrollPane(list),BorderLayout.CENTER);
 
-            JLabel mine = new JLabel("  내 순위  17위    목표 700,000원   /   현재 650,000원");
-            mine.setOpaque(true); mine.setBackground(GREEN_PALE);
-            mine.setBorder(new EmptyBorder(16,16,16,16));
-            mine.setFont(FONT_BOLD);
-            p.add(mine,BorderLayout.SOUTH);
+            mineRankLabel.setOpaque(true); 
+            mineRankLabel.setBackground(GREEN_PALE);
+            mineRankLabel.setBorder(new EmptyBorder(16,16,16,16));
+            mineRankLabel.setFont(FONT_BOLD);
+            p.add(mineRankLabel,BorderLayout.SOUTH);
             return p;
         }
 
         // ── 챌린지 데이터 모델 ──
         class ChallengeData {
+            int roomId;
+            int ownerId;
             String name, ownerName, startDate, endDate;
             int goalAmount, rewardPoint, memberCount;
             List<String> members = new ArrayList<>();
             boolean isMine;
-            ChallengeData(String name, String ownerName, String start, String end,
-                          int goal, int reward, int cnt, boolean isMine) {
+            boolean isParticipating;
+            ChallengeData(int roomId, int ownerId, String name, String ownerName, String start, String end,
+                          int goal, int reward, int cnt, boolean isMine, boolean isParticipating) {
+                this.roomId = roomId; this.ownerId = ownerId;
+                this.isParticipating = isParticipating;
                 this.name = name; this.ownerName = ownerName;
                 this.startDate = start; this.endDate = end;
                 this.goalAmount = goal; this.rewardPoint = reward;
@@ -2501,17 +2779,177 @@ public class GeojiTalchulApp extends JFrame {
             scroll.getVerticalScrollBar().setUnitIncrement(16);
             p.add(scroll, BorderLayout.CENTER);
 
-            // 샘플 데이터 초기 로드
-            if (challengeList.isEmpty()) {
-                ChallengeData s1 = new ChallengeData("30만원 식비 줄이기", "절약왕김씨", "2026-08-01", "2026-08-31", 300000, 1000, 5, false);
-                s1.members.add("절약왕김씨 (방장)"); s1.members.add("소비요정"); s1.members.add("통장지킴이");
-                ChallengeData s2 = new ChallengeData("교통비 절약전", "프로거지", "2026-08-01", "2026-08-31", 100000, 500, 8, false);
-                s2.members.add("프로거지 (방장)");
-                challengeList.add(s1);
-                challengeList.add(s2);
-            }
-            refreshChallengeCards();
+            loadChallengesFromServer();
             return p;
+        }
+
+        void loadPostsFromServer() {
+            new SwingWorker<Void, Void>() {
+                com.google.gson.JsonArray arr;
+                @Override
+                protected Void doInBackground() throws Exception {
+                    com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/posts?userId=" + currentUserId);
+                    if (el != null && el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
+                    }
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    feedContainer.removeAll();
+                    if (arr != null) {
+                        for (int i = 0; i < arr.size(); i++) {
+                            com.google.gson.JsonObject item = arr.get(i).getAsJsonObject();
+                            int postId = item.get("postId").getAsInt();
+                            String userName = item.has("userName") ? item.get("userName").getAsString() : "익명";
+                            String profileBase64 = item.has("profileImage") && !item.get("profileImage").isJsonNull() ? item.get("profileImage").getAsString() : "";
+                            String content = item.get("content").getAsString();
+                            String imgBase64 = item.has("imageData") && !item.get("imageData").isJsonNull() ? item.get("imageData").getAsString() : "";
+                            int likeCount = item.get("likeCount").getAsInt();
+                            boolean isLiked = item.has("liked") && item.get("liked").getAsBoolean();
+                            
+                            ImageIcon profileImage = null;
+                            if (profileBase64 != null && !profileBase64.isEmpty()) {
+                                try {
+                                    byte[] bytes = java.util.Base64.getDecoder().decode(profileBase64);
+                                    profileImage = new ImageIcon(bytes);
+                                } catch (Exception e) {}
+                            }
+
+                            ImageIcon image = null;
+                            if (imgBase64 != null && !imgBase64.isEmpty()) {
+                                try {
+                                    byte[] bytes = java.util.Base64.getDecoder().decode(imgBase64);
+                                    image = new ImageIcon(bytes);
+                                } catch (Exception e) {}
+                            }
+                            
+                            feedContainer.add(buildInstaCard(postId, userName, profileImage, content, image, likeCount, isLiked));
+                            feedContainer.add(Box.createVerticalStrut(20));
+                        }
+                    }
+                    feedContainer.revalidate();
+                    feedContainer.repaint();
+                }
+            }.execute();
+        }
+
+        void loadRankingsFromServer() {
+            new SwingWorker<Void, Void>() {
+                com.google.gson.JsonArray arr;
+                @Override
+                protected Void doInBackground() throws Exception {
+                    com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/rankings");
+                    if (el != null && el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
+                    }
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    rankModel.clear();
+                    mineRankLabel.setText("  아직 순위 집계 중입니다...");
+                    if (arr != null) {
+                        for (int i = 0; i < arr.size(); i++) {
+                            com.google.gson.JsonObject item = arr.get(i).getAsJsonObject();
+                            int rank = item.get("rank").getAsInt();
+                            String name = item.get("userName").getAsString();
+                            int goal = item.get("goalAmount").getAsInt();
+                            int actual = item.get("actualAmount").getAsInt();
+                            double rate = item.get("achievementRate").getAsDouble();
+                            int score = item.get("score").getAsInt();
+                            
+                            String text = String.format("    %d위    %-8s     목표 %,d원    실제 %,d원    달성률 %.1f%%    (점수: %d)", 
+                                rank, name, goal, actual, rate, score);
+                            rankModel.addElement(text);
+                            
+                            String currentName = userLabel.getText().replace(" 님", "");
+                            if (name.equals(currentName)) {
+                                mineRankLabel.setText(String.format("  내 순위  %d위    목표 %,d원   /   현재 %,d원", rank, goal, actual));
+                            }
+                        }
+                    }
+                }
+            }.execute();
+        }
+
+        void loadChallengesFromServer() {
+            new SwingWorker<Void, Void>() {
+                com.google.gson.JsonArray arr;
+                @Override
+                protected Void doInBackground() throws Exception {
+                    com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/challenges");
+                    if (el != null && el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
+                    }
+                    return null;
+                }
+                
+                private String formatTimestampIfNeeded(String dateStr) {
+                    if (dateStr == null || dateStr.isEmpty()) return "";
+                    if (dateStr.matches("\\d+")) {
+                        try {
+                            long ts = Long.parseLong(dateStr);
+                            return new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date(ts));
+                        } catch (Exception e) {}
+                    }
+                    return dateStr;
+                }
+
+                @Override
+                protected void done() {
+                    challengeList.clear();
+                    if (arr != null) {
+                        for (com.google.gson.JsonElement itemEl : arr) {
+                            com.google.gson.JsonObject item = itemEl.getAsJsonObject();
+                            int roomId = item.has("roomId") ? item.get("roomId").getAsInt() : 0;
+                            int ownerId = item.has("ownerId") ? item.get("ownerId").getAsInt() : 0;
+                            String name = item.has("roomName") ? item.get("roomName").getAsString() : "";
+                            String ownerName = item.has("ownerName") ? item.get("ownerName").getAsString() : "";
+                            String startDateRaw = item.has("startDate") ? item.get("startDate").getAsString() : "";
+                            String endDateRaw = item.has("endDate") ? item.get("endDate").getAsString() : "";
+                            
+                            String startDate = formatTimestampIfNeeded(startDateRaw);
+                            String endDate = formatTimestampIfNeeded(endDateRaw);
+                            
+                            boolean isMine = (ownerId == currentUserId);
+                            
+                            int memberCount = 1;
+                            java.util.List<String> loadedMembers = new java.util.ArrayList<>();
+                            if (item.has("members") && item.get("members").isJsonArray()) {
+                                com.google.gson.JsonArray mArr = item.get("members").getAsJsonArray();
+                                memberCount = mArr.size();
+                                for (com.google.gson.JsonElement me : mArr) {
+                                    String mName = me.getAsString();
+                                    if (mName.equals(ownerName)) {
+                                        loadedMembers.add(mName + " (방장)");
+                                    } else {
+                                        loadedMembers.add(mName);
+                                    }
+                                }
+                            }
+                            
+                            boolean isParticipating = isMine;
+                            String currentName = userLabel.getText().replace(" 님", "");
+                            if (item.has("members") && item.get("members").isJsonArray()) {
+                                for (com.google.gson.JsonElement me : item.get("members").getAsJsonArray()) {
+                                    if (me.getAsString().equals(currentName)) {
+                                        isParticipating = true;
+                                    }
+                                }
+                            }
+                            ChallengeData cd = new ChallengeData(roomId, ownerId, name, ownerName, startDate, endDate, 300000, 1000, memberCount, isMine, isParticipating);
+                            if (loadedMembers.isEmpty()) {
+                                cd.members.add(ownerName + " (방장)");
+                            } else {
+                                cd.members.addAll(loadedMembers);
+                            }
+                            challengeList.add(cd);
+                        }
+                    }
+                    refreshChallengeCards();
+                }
+            }.execute();
         }
 
         void refreshChallengeCards() {
@@ -2555,13 +2993,16 @@ public class GeojiTalchulApp extends JFrame {
             JLabel nameLabel = new JLabel(cd.name);
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             nameLabel.setForeground(TEXT);
-            JLabel ownerBadge = new JLabel(cd.isMine ? "  방장" : "  참여중");
-            ownerBadge.setFont(new Font("Malgun Gothic", Font.BOLD, 11));
-            ownerBadge.setForeground(cd.isMine ? GREEN_DARK : BLUE);
-            ownerBadge.setOpaque(true);
-            ownerBadge.setBackground(cd.isMine ? new Color(230, 245, 238) : new Color(230, 238, 255));
-            ownerBadge.setBorder(new EmptyBorder(2, 7, 2, 7));
-            row1.add(nameLabel); row1.add(ownerBadge);
+            row1.add(nameLabel);
+            if (cd.isParticipating) {
+                JLabel ownerBadge = new JLabel(cd.isMine ? "  방장" : "  참여중");
+                ownerBadge.setFont(new Font("Malgun Gothic", Font.BOLD, 11));
+                ownerBadge.setForeground(cd.isMine ? GREEN_DARK : BLUE);
+                ownerBadge.setOpaque(true);
+                ownerBadge.setBackground(cd.isMine ? new Color(230, 245, 238) : new Color(230, 238, 255));
+                ownerBadge.setBorder(new EmptyBorder(2, 7, 2, 7));
+                row1.add(ownerBadge);
+            }
 
             JLabel dateLabel = new JLabel(cd.startDate + "  ~  " + cd.endDate);
             dateLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
@@ -2656,8 +3097,9 @@ public class GeojiTalchulApp extends JFrame {
             memberTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
             memberHead.add(memberTitle, BorderLayout.WEST);
             if (cd.isMine) {
-                JButton invBtn = flatButton("+ 친구 초대");
+                JButton invBtn = flatButton("+초대");
                 invBtn.setForeground(GREEN_DARK);
+                invBtn.setMargin(new Insets(2, 4, 2, 4));
                 invBtn.addActionListener(ev -> { d.dispose(); showInviteFriendDialog(cd); });
                 memberHead.add(invBtn, BorderLayout.EAST);
             }
@@ -2692,9 +3134,26 @@ public class GeojiTalchulApp extends JFrame {
             JButton close = styledSecondaryButton("닫기");
             close.addActionListener(ev -> d.dispose());
             if (cd.isMine) {
-                JButton invBtn2 = primaryButton("친구 초대");
-                invBtn2.addActionListener(ev -> { d.dispose(); showInviteFriendDialog(cd); });
-                bottom.add(invBtn2);
+                JButton delBtn = styledSecondaryButton("챌린지 삭제");
+                delBtn.setForeground(RED);
+                delBtn.addActionListener(ev -> {
+                    int ans = JOptionPane.showConfirmDialog(d, "정말 이 챌린지를 삭제하시겠습니까?", "삭제 확인", JOptionPane.YES_NO_OPTION);
+                    if (ans == JOptionPane.YES_OPTION) {
+                        new SwingWorker<Void, Void>() {
+                            @Override
+                            protected Void doInBackground() throws Exception {
+                                httpDelete("http://localhost:8080/api/challenges?roomId=" + cd.roomId + "&ownerId=" + currentUserId);
+                                return null;
+                            }
+                            @Override
+                            protected void done() {
+                                d.dispose();
+                                loadChallengesFromServer();
+                            }
+                        }.execute();
+                    }
+                });
+                bottom.add(delBtn);
             }
             bottom.add(close);
             d.add(bottom, BorderLayout.SOUTH);
@@ -2712,68 +3171,100 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void showInviteFriendDialog(ChallengeData cd) {
-            List<String> friends = homePanel.friends;
-            if (friends.isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "등록된 친구가 없습니다.\n홈 화면의 [친구 관리]에서 먼저 친구를 추가해 주세요.",
-                    "친구 초대", JOptionPane.INFORMATION_MESSAGE);
-                return;
-            }
-            JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "친구 초대", true);
-            d.setSize(380, 420);
-            d.setLocationRelativeTo(this);
-            d.setLayout(new BorderLayout());
-            d.getContentPane().setBackground(BG);
-
-            JLabel title = new JLabel("  초대할 친구를 선택하세요", SwingConstants.LEFT);
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
-            title.setBorder(new EmptyBorder(18, 18, 10, 18));
-            d.add(title, BorderLayout.NORTH);
-
-            JPanel listPanel = new JPanel();
-            listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
-            listPanel.setBackground(WHITE);
-            listPanel.setBorder(new EmptyBorder(6, 16, 6, 16));
-            List<JCheckBox> boxes = new ArrayList<>();
-            for (String f : friends) {
-                boolean alreadyIn = cd.members.stream().anyMatch(m -> m.contains(f));
-                JCheckBox cb = new JCheckBox(f + (alreadyIn ? "  (이미 참여 중)" : ""));
-                cb.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
-                cb.setBackground(WHITE);
-                cb.setEnabled(!alreadyIn);
-                cb.setBorder(new EmptyBorder(8, 4, 8, 4));
-                boxes.add(cb);
-                listPanel.add(cb);
-            }
-            JScrollPane scroll = new JScrollPane(listPanel);
-            scroll.setBorder(BorderFactory.createLineBorder(BORDER));
-            scroll.getVerticalScrollBar().setUnitIncrement(16);
-            d.add(scroll, BorderLayout.CENTER);
-
-            JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
-            bottom.setBackground(new Color(248, 249, 251));
-            bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
-            JButton cancel = styledSecondaryButton("취소");
-            cancel.addActionListener(ev -> d.dispose());
-            JButton ok = primaryButton("초대 보내기");
-            ok.addActionListener(ev -> {
-                List<String> invited = new ArrayList<>();
-                for (int i = 0; i < boxes.size(); i++)
-                    if (boxes.get(i).isSelected()) invited.add(friends.get(i));
-                if (invited.isEmpty()) { JOptionPane.showMessageDialog(d, "초대할 친구를 선택해 주세요."); return; }
-                for (String inv : invited) {
-                    boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
-                    if (!dup) { cd.members.add(inv); cd.memberCount++; }
+            new SwingWorker<List<String>, Void>() {
+                @Override
+                protected List<String> doInBackground() throws Exception {
+                    List<String> friends = new ArrayList<>();
+                    com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/friends?userId=" + currentUserId);
+                    if (el != null && el.isJsonArray()) {
+                        homePanel.friendMap.clear();
+                        for (com.google.gson.JsonElement item : el.getAsJsonArray()) {
+                            com.google.gson.JsonObject obj = item.getAsJsonObject();
+                            int fId = obj.has("friendId") ? obj.get("friendId").getAsInt() : -1;
+                            String fName = obj.has("friendUserName") ? obj.get("friendUserName").getAsString() : "알수없음";
+                            if (fId >= 0) {
+                                homePanel.friendMap.put(fId, fName);
+                                friends.add(fName);
+                            }
+                        }
+                    }
+                    return friends;
                 }
-                d.dispose();
-                refreshChallengeCards();
-                JOptionPane.showMessageDialog(this,
-                    String.join(", ", invited) + " 님께 초대를 보냈습니다!",
-                    "초대 완료", JOptionPane.INFORMATION_MESSAGE);
-            });
-            bottom.add(cancel); bottom.add(ok);
-            d.add(bottom, BorderLayout.SOUTH);
-            d.setVisible(true);
+                
+                @Override
+                protected void done() {
+                    try {
+                        List<String> friends = get();
+                        if (friends.isEmpty()) {
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this,
+                                "등록된 친구가 없습니다.\n홈 화면의 [친구 관리]에서 먼저 친구를 추가해 주세요.",
+                                "친구 초대", JOptionPane.INFORMATION_MESSAGE);
+                            return;
+                        }
+                        
+                        JDialog d = new JDialog((Frame) SwingUtilities.getWindowAncestor(CommunityPanel.this), "친구 초대", true);
+                        d.setSize(380, 420);
+                        d.setLocationRelativeTo(CommunityPanel.this);
+                        d.setLayout(new BorderLayout());
+                        d.getContentPane().setBackground(BG);
+
+                        JLabel title = new JLabel("  초대할 친구를 선택하세요", SwingConstants.LEFT);
+                        title.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+                        title.setBorder(new EmptyBorder(18, 18, 10, 18));
+                        d.add(title, BorderLayout.NORTH);
+
+                        JPanel listPanel = new JPanel();
+                        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+                        listPanel.setBackground(WHITE);
+                        
+                        List<JCheckBox> boxes = new ArrayList<>();
+                        for (String f : friends) {
+                            JCheckBox cb = new JCheckBox(f);
+                            cb.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            cb.setOpaque(false);
+                            cb.setBorder(new EmptyBorder(8, 10, 8, 10));
+                            if (cd.members.stream().anyMatch(m -> m.contains(f))) {
+                                cb.setText(f + " (참여중)");
+                                cb.setEnabled(false);
+                            }
+                            boxes.add(cb);
+                            listPanel.add(cb);
+                        }
+
+                        JScrollPane scroll = new JScrollPane(listPanel);
+                        scroll.setBorder(BorderFactory.createLineBorder(BORDER));
+                        d.add(scroll, BorderLayout.CENTER);
+
+                        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 10));
+                        bottom.setBackground(new Color(248, 249, 251));
+                        bottom.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+                        JButton cancel = styledSecondaryButton("취소");
+                        cancel.addActionListener(ev -> d.dispose());
+                        JButton ok = primaryButton("초대 보내기");
+                        ok.addActionListener(ev -> {
+                            List<String> invited = new ArrayList<>();
+                            for (int i = 0; i < boxes.size(); i++)
+                                if (boxes.get(i).isSelected()) invited.add(friends.get(i));
+                            if (invited.isEmpty()) { JOptionPane.showMessageDialog(d, "초대할 친구를 선택해주세요."); return; }
+                            for (String inv : invited) {
+                                boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
+                                if (!dup) { cd.members.add(inv); cd.memberCount++; }
+                            }
+                            d.dispose();
+                            refreshChallengeCards();
+                            JOptionPane.showMessageDialog(GeojiTalchulApp.this,
+                                String.join(", ", invited) + " 님께 초대를 보냈습니다.",
+                                "초대 완료", JOptionPane.INFORMATION_MESSAGE);
+                        });
+                        bottom.add(cancel); bottom.add(ok);
+                        d.add(bottom, BorderLayout.SOUTH);
+
+                        d.setVisible(true);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }.execute();
         }
 
         void createChallenge() {
@@ -2853,18 +3344,41 @@ public class GeojiTalchulApp extends JFrame {
                 String parsedEnd   = parseDateInput(endRef[0]   != null ? endRef[0].getText().trim()   : "");
                 if (parsedStart == null) { JOptionPane.showMessageDialog(d, "시작일 형식이 올바르지 않습니다.\n(예: 20260827, 2026-08-27, 2026/08/27)", "입력 오류", JOptionPane.WARNING_MESSAGE); return; }
                 if (parsedEnd   == null) { JOptionPane.showMessageDialog(d, "종료일 형식이 올바르지 않습니다.\n(예: 20260827, 2026-08-27, 2026/08/27)", "입력 오류", JOptionPane.WARNING_MESSAGE); return; }
-                int goal = 300000, reward = 1000;
-                try { goal   = Integer.parseInt(goalField.getText().trim().replaceAll(",", "")); } catch (NumberFormatException ignored) {}
-                try { reward = Integer.parseInt(rewardField.getText().trim().replaceAll(",", "")); } catch (NumberFormatException ignored) {}
-                String ownerName = userLabel.getText().replace(" 님", "");
-                ChallengeData cd = new ChallengeData(nm, ownerName, parsedStart, parsedEnd, goal, reward, 1, true);
-                cd.members.add(ownerName + " (방장)");
-                challengeList.add(cd);
-                state.points += 50;
-                refreshAll();
-                refreshChallengeCards();
-                d.dispose();
-                JOptionPane.showMessageDialog(CommunityPanel.this, "\"" + nm + "\" 챌린지가 생성되었습니다!\n포인트 50P가 적립되었습니다.", "챌린지 생성 완료", JOptionPane.INFORMATION_MESSAGE);
+                
+                ok.setEnabled(false);
+                ok.setText("생성 중...");
+                
+                new SwingWorker<Boolean, Void>() {
+                    @Override
+                    protected Boolean doInBackground() throws Exception {
+                        com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                        body.addProperty("ownerId", currentUserId);
+                        body.addProperty("roomName", nm);
+                        body.addProperty("startDate", parsedStart);
+                        body.addProperty("endDate", parsedEnd);
+                        com.google.gson.JsonObject res = httpPost("http://localhost:8080/api/challenges", body.toString());
+                        return res != null && res.has("success") && res.get("success").getAsBoolean();
+                    }
+                    @Override
+                    protected void done() {
+                        try {
+                            if (get()) {
+                                earnPointAsync("CHALLENGE", 50);
+                                loadChallengesFromServer();
+                                d.dispose();
+                                JOptionPane.showMessageDialog(CommunityPanel.this, "\"" + nm + "\" 챌린지가 생성되었습니다!\n포인트 50P가 적립되었습니다.", "챌린지 생성 완료", JOptionPane.INFORMATION_MESSAGE);
+                            } else {
+                                JOptionPane.showMessageDialog(d, "챌린지 생성에 실패했습니다.", "생성 오류", JOptionPane.WARNING_MESSAGE);
+                                ok.setEnabled(true);
+                                ok.setText("생성하기");
+                            }
+                        } catch (Exception ex) {
+                            JOptionPane.showMessageDialog(d, "서버 오류: " + ex.getMessage(), "생성 오류", JOptionPane.ERROR_MESSAGE);
+                            ok.setEnabled(true);
+                            ok.setText("생성하기");
+                        }
+                    }
+                }.execute();
             });
             bottom.add(cancel); bottom.add(ok);
             d.add(bottom, BorderLayout.SOUTH);
@@ -3173,11 +3687,37 @@ public class GeojiTalchulApp extends JFrame {
                 String postText = isDefaultText ? "" : text;
                 
                 if(!postText.isEmpty() || selectedImage[0] != null) {
-                    feedContainer.add(buildInstaCard(userLabel.getText().replace(" 님", ""), postText, selectedImage[0], 0, 0), 0);
-                    feedContainer.add(Box.createVerticalStrut(20), 1);
-                    state.points += 30;
-                    refreshAll();
-                    dialog.dispose();
+                    new SwingWorker<Void, Void>() {
+                        boolean ok = false;
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            com.google.gson.JsonObject payload = new com.google.gson.JsonObject();
+                            payload.addProperty("userId", currentUserId);
+                            payload.addProperty("content", postText);
+                            if (selectedBase64[0] != null) {
+                                payload.addProperty("imageData", selectedBase64[0]);
+                            }
+                            com.google.gson.JsonObject res = httpPost("http://localhost:8080/api/posts", payload.toString());
+                            if (res != null && res.has("success") && res.get("success").getAsBoolean()) {
+                                ok = true;
+                                // Wait, the requirement says "+30P for SNS post writing API integration"
+                                // We also need to add point earn logic in the backend, but for now we can call PointMgr API?
+                                // Actually we can just update state.points manually after success, or add points in the backend
+                                // 9. 지출/게시글/챌린지 생성 시 포인트 적립 API 연동 (+20P, +30P, +50P)
+                                // Let's leave that to the 9th feature! For now just load feeds!
+                            }
+                            return null;
+                        }
+                        @Override
+                        protected void done() {
+                            if (ok) {
+                                earnPointAsync("POST", 30);
+                                dialog.dispose();
+                            } else {
+                                JOptionPane.showMessageDialog(dialog, "게시물 등록에 실패했습니다.", "작성 오류", JOptionPane.ERROR_MESSAGE);
+                            }
+                        }
+                    }.execute();
                 } else {
                     JOptionPane.showMessageDialog(dialog, "내용을 입력하거나 사진을 첨부해 주세요.", "작성 오류", JOptionPane.WARNING_MESSAGE);
                 }
@@ -3191,30 +3731,13 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void refresh() {
-            rankModel.clear();
-            rankModel.addElement("	 1위   절약왕김씨       목표 500,000원   실제 420,000원   달성률 84%");
-            rankModel.addElement("	 2위   거지탈출러       목표 800,000원   실제 700,000원   달성률 87.5%");
-            rankModel.addElement("	 3위   소비요정         목표 400,000원   실제 380,000원   달성률 95%");
-            rankModel.addElement("   4위   통장지킴이       목표 900,000원   실제 880,000원   달성률 97.8%");
-            rankModel.addElement("   5위   절약초보         목표 600,000원   실제 610,000원   달성률 101.7%");
-
-            if(challengeModel.isEmpty()){
-                challengeModel.addElement(" 30만원 식비 줄이기 | 목표 300,000원 | 보상 1,000P | 5명 참여");
-                challengeModel.addElement(" 교통비 절약전 | 목표 100,000원 | 보상 500P | 8명 참여");
-            }
-            
-            // 🌟 3. 빈 피드에 기본 인스타 카드 2장 깔아두기
-            if(feedContainer.getComponentCount() == 0){
-                feedContainer.add(buildInstaCard("프로거지", "이번 달 외식비를 20만원 아래로 줄여보겠습니다! 화이팅!", null, 32, 8));
-                feedContainer.add(Box.createVerticalStrut(20)); // 카드 사이 간격
-                feedContainer.add(buildInstaCard("절약왕김씨", "고정지출을 정리하니까 생각보다 새는 돈이 많네요. 내일부터 커피값 아낍니다.", null, 21, 4));
-            }
-            feedContainer.revalidate();
-            feedContainer.repaint();
+            loadRankingsFromServer();
+            loadChallengesFromServer(); // 로그인/아웃 시 챌린지 갱신
+            loadPostsFromServer();
         }
 
         // 🌟 4. 댓글 기능 완벽하게 적출된 인스타 카드!
-        private JPanel buildInstaCard(String author, String text, ImageIcon image, int likes, int comments) {
+        private JPanel buildInstaCard(int postId, String author, ImageIcon profileImage, String text, ImageIcon image, int likes, boolean isLikedInitial) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
@@ -3222,11 +3745,23 @@ public class GeojiTalchulApp extends JFrame {
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             header.setOpaque(false);
-            JLabel profilePic = new JLabel("😎"); 
-            profilePic.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 24));
+            JLabel profilePic = new JLabel(); 
             profilePic.setPreferredSize(new Dimension(36, 36));
             profilePic.setHorizontalAlignment(SwingConstants.CENTER);
             profilePic.setVerticalAlignment(SwingConstants.CENTER);
+            if (profileImage != null) {
+                Image scaledProfile = profileImage.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+                profilePic.setIcon(new ImageIcon(scaledProfile));
+            } else {
+                try {
+                    ImageIcon pIcon = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png"));
+                    Image scaledProfile = pIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
+                    profilePic.setIcon(new ImageIcon(scaledProfile));
+                } catch (Exception e) {
+                    profilePic.setText("😎");
+                }
+            }
+
             JLabel nameLabel = new JLabel(author);
             nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
             header.add(profilePic);
@@ -3240,39 +3775,51 @@ public class GeojiTalchulApp extends JFrame {
             
             // --- 좋아요 버튼 ---
             int[] currentLikes = {likes};
-            boolean[] isLiked = {false};
+            boolean[] isLiked = {isLikedInitial};
             
             JPanel likeBtn = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
             likeBtn.setOpaque(false);
             likeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            JLabel likeIcon = new JLabel("\u2661");
+            JLabel likeIcon = new JLabel(isLiked[0] ? "\u2665" : "\u2661");
             likeIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 18));
             likeIcon.setPreferredSize(new Dimension(24, 24));
             likeIcon.setHorizontalAlignment(SwingConstants.CENTER);
             likeIcon.setVerticalAlignment(SwingConstants.CENTER);
+            likeIcon.setForeground(isLiked[0] ? RED : TEXT);
             JLabel likeText = new JLabel("좋아요 " + currentLikes[0]);
             likeText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            likeText.setForeground(isLiked[0] ? RED : TEXT);
             likeBtn.add(likeIcon);
             likeBtn.add(likeText);
             
             likeBtn.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
-                    if (isLiked[0]) {
-                        isLiked[0] = false;
-                        currentLikes[0]--;
-                        likeIcon.setText("\u2661");
-                        likeIcon.setForeground(TEXT);
-                        likeText.setText("좋아요 " + currentLikes[0]);
-                        likeText.setForeground(TEXT);
-                    } else {
-                        isLiked[0] = true;
-                        currentLikes[0]++;
-                        likeIcon.setText("\u2665");
-                        likeIcon.setForeground(RED);
-                        likeText.setText("좋아요 " + currentLikes[0]);
-                        likeText.setForeground(RED);
-                    }
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            httpPost("http://localhost:8080/api/posts/" + postId + "/like?userId=" + currentUserId, "");
+                            return null;
+                        }
+                        @Override
+                        protected void done() {
+                            if (isLiked[0]) {
+                                isLiked[0] = false;
+                                currentLikes[0]--;
+                                likeIcon.setText("\u2661");
+                                likeIcon.setForeground(TEXT);
+                                likeText.setText("좋아요 " + currentLikes[0]);
+                                likeText.setForeground(TEXT);
+                            } else {
+                                isLiked[0] = true;
+                                currentLikes[0]++;
+                                likeIcon.setText("\u2665");
+                                likeIcon.setForeground(RED);
+                                likeText.setText("좋아요 " + currentLikes[0]);
+                                likeText.setForeground(RED);
+                            }
+                        }
+                    }.execute();
                 }
             });
 
@@ -3336,17 +3883,48 @@ public class GeojiTalchulApp extends JFrame {
 
             JPanel items=new JPanel(new GridLayout(0,3,14,14));
             items.setBackground(WHITE);
-            addShopItem(items," 카페 쿠폰","커피 1잔","3,000P",3000);
-            addShopItem(items," 식사 쿠폰","식사 할인권","5,000P",5000);
-            addShopItem(items," 음원 이용권","1개월","7,000P",7000);
-            addShopItem(items," 영화 관람권","영화 1편","10,000P",10000);
-            addShopItem(items," 랜덤 박스","랜덤 보상","15,000P",15000);
-            addSkinShopItem(items, " 프로거지 스킨", "캐릭터 꾸미기", "5,000P", 5000, "richman.png");
             p.add(items,BorderLayout.CENTER);
+            
+            // 상점 아이템을 서버에서 불러오기
+            new SwingWorker<Void, Void>() {
+                com.google.gson.JsonArray arr;
+                @Override
+                protected Void doInBackground() throws Exception {
+                    com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/store/items");
+                    if (el != null && el.isJsonArray()) {
+                        arr = el.getAsJsonArray();
+                    }
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    if (arr != null) {
+                        for (com.google.gson.JsonElement itemEl : arr) {
+                            com.google.gson.JsonObject item = itemEl.getAsJsonObject();
+                            int itemId = item.has("itemId") ? item.get("itemId").getAsInt() : 0;
+                            String name = item.has("productName") ? item.get("productName").getAsString() : "알수없음";
+                            String type = item.has("productType") ? item.get("productType").getAsString() : "기타";
+                            int price = item.has("pricePoint") ? item.get("pricePoint").getAsInt() : 0;
+                            
+                            if ("스킨".equals(type)) {
+                                String skinFile = name.contains("거지") ? "poorman.png" : "richman.png";
+                                addSkinShopItem(items, itemId, name, "캐릭터 꾸미기", String.format("%,dP", price), price, skinFile);
+                            } else {
+                                String subtitle = name.contains("식사") ? "식사 할인권" :
+                                                  name.contains("상품권") ? "상품권" : "";
+                                addShopItem(items, itemId, name, subtitle, String.format("%,dP", price), price);
+                            }
+                        }
+                        items.revalidate();
+                        items.repaint();
+                    }
+                }
+            }.execute();
+
             return p;
         }
 
-        void addSkinShopItem(JPanel parent, String name, String subtitle, String price, int cost, String skinFile) {
+        void addSkinShopItem(JPanel parent, int itemId, String name, String subtitle, String price, int cost, String skinFile) {
             JPanel c = roundedPanel(new Color(249, 250, 251), 14);
             c.setLayout(new BoxLayout(c, BoxLayout.Y_AXIS));
 
@@ -3376,12 +3954,34 @@ public class GeojiTalchulApp extends JFrame {
                 }
 
                 if (state.points >= cost) {
-                    state.points -= cost;
-                    state.ownedSkins.add(skinFile);
-                    refreshAll();
-
-                    JOptionPane.showMessageDialog(this, name + " 구매 완료!\n\n이제 홈 화면의 [스킨 설정]에서 사용할 수 있습니다.", "포인트 상점",
-                            JOptionPane.INFORMATION_MESSAGE);
+                    buy.setEnabled(false);
+                    new SwingWorker<Boolean, Void>() {
+                        @Override
+                        protected Boolean doInBackground() throws Exception {
+                            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                            body.addProperty("userId", currentUserId);
+                            body.addProperty("itemId", itemId);
+                            com.google.gson.JsonObject res = httpPost("http://localhost:8080/api/store/buy", body.toString());
+                            return res != null && res.has("success") && res.get("success").getAsBoolean();
+                        }
+                        @Override
+                        protected void done() {
+                            try {
+                                if (get()) {
+                                    state.points -= cost;
+                                    state.ownedSkins.add(skinFile);
+                                    refreshAll();
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, name + " 구매 완료!\n\n이제 홈 화면의 [스킨 설정]에서 사용할 수 있습니다.", "포인트 상점", JOptionPane.INFORMATION_MESSAGE);
+                                } else {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "포인트가 부족하거나 구매에 실패했습니다.", "포인트 상점", JOptionPane.WARNING_MESSAGE);
+                                    buy.setEnabled(true);
+                                }
+                            } catch (Exception ex) {
+                                JOptionPane.showMessageDialog(GeojiTalchulApp.this, "서버 오류: " + ex.getMessage(), "포인트 상점", JOptionPane.ERROR_MESSAGE);
+                                buy.setEnabled(true);
+                            }
+                        }
+                    }.execute();
                 } else {
                     JOptionPane.showMessageDialog(this, "포인트가 부족합니다.", "포인트 상점", JOptionPane.WARNING_MESSAGE);
                 }
@@ -3401,8 +4001,8 @@ public class GeojiTalchulApp extends JFrame {
             parent.add(c);
         }
 
-        void addShopItem(JPanel parent,String icon,String name,String price,int cost){
-            JPanel c=roundedPanel(new Color(249,250,251),14);
+        void addShopItem(JPanel parent, int itemId, String icon, String name, String price, int cost){
+            JPanel c=roundedPanel(new Color(249,251,251),14);
             c.setLayout(new BoxLayout(c,BoxLayout.Y_AXIS));
 
             JLabel i=new JLabel(icon,SwingConstants.CENTER);
@@ -3419,15 +4019,33 @@ public class GeojiTalchulApp extends JFrame {
 
             buy.addActionListener(e->{
                 if(state.points>=cost){
-                    state.points-=cost;
-                    refreshAll();
-
-                    JOptionPane.showMessageDialog(
-                        this,
-                        name+" 교환 완료!",
-                        "포인트 상점",
-                        JOptionPane.INFORMATION_MESSAGE
-                    );
+                    buy.setEnabled(false);
+                    new SwingWorker<Boolean, Void>() {
+                        @Override
+                        protected Boolean doInBackground() throws Exception {
+                            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                            body.addProperty("userId", currentUserId);
+                            body.addProperty("itemId", itemId);
+                            com.google.gson.JsonObject res = httpPost("http://localhost:8080/api/store/buy", body.toString());
+                            return res != null && res.has("success") && res.get("success").getAsBoolean();
+                        }
+                        @Override
+                        protected void done() {
+                            try {
+                                if (get()) {
+                                    state.points -= cost;
+                                    refreshAll();
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, name+" 교환 완료!", "포인트 상점", JOptionPane.INFORMATION_MESSAGE);
+                                } else {
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "포인트가 부족하거나 구매에 실패했습니다.", "포인트 상점", JOptionPane.WARNING_MESSAGE);
+                                    buy.setEnabled(true);
+                                }
+                            } catch (Exception ex) {
+                                JOptionPane.showMessageDialog(GeojiTalchulApp.this, "서버 오류: " + ex.getMessage(), "포인트 상점", JOptionPane.ERROR_MESSAGE);
+                                buy.setEnabled(true);
+                            }
+                        }
+                    }.execute();
                 }else{
                     JOptionPane.showMessageDialog(
                         this,
@@ -3444,10 +4062,11 @@ public class GeojiTalchulApp extends JFrame {
 
             c.add(Box.createVerticalGlue());
             c.add(i);
-            c.add(Box.createVerticalStrut(8));
+            c.add(Box.createVerticalStrut(10));
             c.add(n);
+            c.add(Box.createVerticalStrut(5));
             c.add(pr);
-            c.add(Box.createVerticalStrut(8));
+            c.add(Box.createVerticalStrut(10));
             c.add(buy);
             c.add(Box.createVerticalGlue());
 
@@ -3550,15 +4169,15 @@ public class GeojiTalchulApp extends JFrame {
                         try {
                             JsonObject res = get();
                             if (res != null) {
-                                // DB에 정상 저장되었으므로 서버에서 전체 내역과 올바른 expenseId를 다시 불러와 동기화
-                                state.points += 20;
+                                // DB에 잘 들어갔으므로 방금 쓴 올바른 expenseId를 다시 불러오기 위함
                                 dlg.dispose();
                                 loadMyExpensesFromServer();
+                                earnPointAsync("EXPENSE", 20);
                                 
                                 if (state.budgetUsage() >= 1) {
                                     JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다.\n\n⚠ 예산을 초과했습니다.", "예산 경고", JOptionPane.WARNING_MESSAGE);
                                 } else {
-                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 서버에 저장되었습니다! +20P", "저장 완료", JOptionPane.INFORMATION_MESSAGE);
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this, "지출이 저장되었습니다! +20P", "저장 완료", JOptionPane.INFORMATION_MESSAGE);
                                 }
                             }
                         } catch (Exception ex) {
@@ -3593,21 +4212,8 @@ public class GeojiTalchulApp extends JFrame {
         LinkedHashSet<String> ownedSkins = new LinkedHashSet<>(Arrays.asList("poorman.png"));
         String currentSkin = "poorman.png";
 
-        List<String> largeCategories = Arrays.asList(
-                "식비", "교통/차량", "주거/통신", "패션/쇼핑", "문화/취미", "뷰티/미용", "건강/의료", "자기계발/교육"
-        );
-
+        List<String> largeCategories = new ArrayList<>();
         Map<String, List<String>> mediumMap = new LinkedHashMap<>();
-        {
-            mediumMap.put("식비", Arrays.asList("배달음식", "외식/식당", "카페/디저트", "식료품/장보기"));
-            mediumMap.put("교통/차량", Arrays.asList("대중교통", "주유/세차", "택시"));
-            mediumMap.put("주거/통신", Arrays.asList("월세", "관리비/공과금", "통신비/인터넷"));
-            mediumMap.put("패션/쇼핑", Arrays.asList("의류", "패션잡화", "생활용품"));
-            mediumMap.put("문화/취미", Arrays.asList("영화/공연", "도서/자기계발", "운동/헬스"));
-            mediumMap.put("뷰티/미용", Arrays.asList("화장품/스킨케어", "헤어/미용실"));
-            mediumMap.put("건강/의료", Arrays.asList("병원/약국", "건강보조식품")); // DB엔 없지만 임의로 추가
-            mediumMap.put("자기계발/교육", Arrays.asList("자격증/시험응시료", "스터디카페/독서실"));
-        }
         
         List<Expense> expenses=new ArrayList<>();
         Set<Integer> fixedExpenseIds=new HashSet<>();
@@ -3643,9 +4249,9 @@ public class GeojiTalchulApp extends JFrame {
             LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
             Map<String,List<Expense>> map=expenses.stream()
                     .filter(e->!e.date.isBefore(threeMonthsAgo) && e.date.isBefore(nextMonthStart))
-                    .collect(Collectors.groupingBy(e->e.medium+"|"+e.amount,LinkedHashMap::new,Collectors.toList()));
+                    .collect(Collectors.groupingBy(e->e.large+"|"+e.medium+"|"+e.amount,LinkedHashMap::new,Collectors.toList()));
             return map.values().stream()
-                    .filter(v->v.size()>=3)
+                    .filter(v -> v.stream().map(e -> e.date.getYear() * 12 + e.date.getMonthValue()).distinct().count() >= 3)
                     .map(v->v.get(0))
                     .collect(Collectors.toList());
         }
@@ -3861,6 +4467,25 @@ public class GeojiTalchulApp extends JFrame {
             e.printStackTrace();
             return null;
         }
+    }
+
+    void earnPointAsync(String pointType, int amount) {
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                body.addProperty("userId", currentUserId);
+                body.addProperty("pointType", pointType);
+                body.addProperty("amount", amount);
+                httpPost("http://localhost:8080/api/points/earn", body.toString());
+                return null;
+            }
+            @Override
+            protected void done() {
+                state.points += amount;
+                refreshAll();
+            }
+        }.execute();
     }
 
     JsonObject httpPost(String urlStr, String jsonBody) {

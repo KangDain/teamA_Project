@@ -11,6 +11,10 @@ public class TeamRoomBean {
     private Date endDate;
     private Timestamp createdAt;
     private String ownerName;
+    private java.util.List<String> members = new java.util.ArrayList<>();
+
+    public java.util.List<String> getMembers() { return members; }
+    public void setMembers(java.util.List<String> members) { this.members = members; }
 
     public TeamRoomBean() {}
 

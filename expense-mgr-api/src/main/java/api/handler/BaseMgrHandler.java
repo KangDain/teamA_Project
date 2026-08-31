@@ -21,6 +21,8 @@ public abstract class BaseMgrHandler implements HttpHandler {
     public BaseMgrHandler() {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        this.objectMapper.setDateFormat(new java.text.SimpleDateFormat("yyyy-MM-dd"));
     }
 
     @Override

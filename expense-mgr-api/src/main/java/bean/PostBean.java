@@ -26,12 +26,20 @@ public class PostBean {
     public Timestamp getCreatedAt() { return createdAt; }
     public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
 
-        private String imageData;
+    private String imageData;
     private boolean isLiked;
+    private String userName;
+    private String profileImage;
 
     public String getImageData() { return imageData; }
     public void setImageData(String imageData) { this.imageData = imageData; }
 
     public boolean isLiked() { return isLiked; }
     public void setLiked(boolean isLiked) { this.isLiked = isLiked; }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+    
+    public String getProfileImage() { return profileImage; }
+    public void setProfileImage(String profileImage) { this.profileImage = profileImage; }
 }

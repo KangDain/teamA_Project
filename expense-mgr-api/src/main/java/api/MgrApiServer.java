@@ -30,6 +30,7 @@ public class MgrApiServer {
         server.createContext("/api/friends", new FriendMgrHandler());
         server.createContext("/api/challenges", new ChallengeMgrHandler());
         server.createContext("/api/store", new StoreMgrHandler());
+        server.createContext("/api/rankings", new RankingMgrHandler());
         server.createContext("/api/settings", new SettingMgrHandler());
         // ProfileMgrHandler 
         server.createContext("/api/profile", new ProfileMgrHandler());

@@ -20,7 +20,7 @@ public class StoreMgr {
         Vector<ItemBean> vlist = new Vector<>();
         try {
             con = pool.getConnection();
-            String sql = "SELECT * FROM item ORDER BY item_id ASC";
+            String sql = "SELECT * FROM item ORDER BY CASE WHEN product_type = '스킨' THEN 1 ELSE 2 END, item_id ASC";
             pstmt = con.prepareStatement(sql);
             rs = pstmt.executeQuery();
             while (rs.next()) {
