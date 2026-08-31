@@ -1,4 +1,4 @@
-﻿package com.richman.ui;
+package com.richman.ui;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -94,36 +94,36 @@ import com.google.gson.JsonParser;
 
 public class GeojiTalchulApp extends JFrame {
 
-    // --- UI Theme Constants ---
-    // Background and base colors
+    // --- UI 테마 상수 ---
+    // 배경 및 기본 색상
     static final Color BG = Color.decode("#F7EDDA"); 
     static final Color WHITE = Color.WHITE;
     
-    // Text and muted colors
+    // 텍스트 및 비활성 색상
     static final Color TEXT = new Color(42, 48, 56); 
     static final Color MUTED = new Color(112, 124, 141);
     
-    // Border colors
+    // 테두리 색상
     static final Color BORDER = Color.decode("#C5DEDA"); 
 
-    // Primary brand colors (Buttons, Highlights)
+    // 주요 브랜드 색상 (버튼, 강조 효과 등)
     static final Color NAVY = Color.decode("#4F7670");
     static final Color GREEN_DARK = Color.decode("#4F7670");
     static final Color GREEN = Color.decode("#659F7C");
     static final Color GREEN_PALE = Color.decode("#92BEA9");
     static final Color BLUE = Color.decode("#9CB4D4");
 
-    // Semantic colors (Warnings, Status)
+    // 상태 색상 (경고, 알림 등)
     static final Color RED = new Color(219, 87, 91); 
     static final Color ORANGE = new Color(232, 155, 72); 
     static final Color PURPLE = new Color(132, 103, 175); 
 
-    // Default Fonts
+    // 기본 폰트 설정
     static final Font FONT = new Font("Malgun Gothic", Font.PLAIN, 14);
     static final Font FONT_BOLD = new Font("Malgun Gothic", Font.BOLD, 14);
     static final Font FONT_TITLE = new Font("Malgun Gothic", Font.BOLD, 25);
 
-    // --- Application State ---
+    // --- 애플리케이션 상태 (전역 변수) ---
     final AppState state = new AppState();
     String dismissedFixedCandidateKey = "";
     final JPanel content = new JPanel(new CardLayout());
@@ -137,13 +137,13 @@ public class GeojiTalchulApp extends JFrame {
     CommunityPanel communityPanel;
     MyStorePanel myStorePanel;
 
-    // --- Root Views ---
+    // --- 최상위 화면(루트) 관리 ---
     final JPanel rootContainer = new JPanel(new CardLayout());
     JPanel loginPanel;
     JPanel signupPanel;
     JPanel mainShell;
 
-    // --- Session Variables ---
+    // --- 로그인 세션 정보 ---
     int currentUserId = -1;
     Image currentUserProfileImage = new ImageIcon(getClass().getResource("/com/richman/ui/poorman.png")).getImage();
 
