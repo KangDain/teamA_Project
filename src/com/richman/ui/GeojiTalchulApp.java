@@ -252,8 +252,11 @@ public class GeojiTalchulApp extends JFrame {
             protected void done() {
                 try {
                     com.google.gson.JsonObject obj = get();
-                    if (obj != null && obj.has("alertThreshold")) {
-                        state.alertThreshold = obj.get("alertThreshold").getAsInt();
+                    if (obj != null) {
+                        if (obj.has("alertThreshold")) state.alertThreshold = obj.get("alertThreshold").getAsInt();
+                        if (obj.has("currentSkin") && !obj.get("currentSkin").isJsonNull()) {
+                            state.currentSkin = obj.get("currentSkin").getAsString();
+                        }
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -1172,7 +1175,7 @@ public class GeojiTalchulApp extends JFrame {
                         JsonObject settingBody = new JsonObject();
                         settingBody.addProperty("userId", currentUserId);
                         settingBody.addProperty("alertThreshold", newThreshold);
-                        settingBody.addProperty("alertWeekday", fixed.isSelected() ? "월" : "");
+                        settingBody.addProperty("alertWeekday", fixed.isSelected() ? "월" : ""); settingBody.addProperty("currentSkin", state.currentSkin);
                         return httpPost("http://localhost:8080/api/settings", settingBody.toString()); // 알림 설정 API
                     }
                     @Override
@@ -1848,7 +1851,7 @@ public class GeojiTalchulApp extends JFrame {
 
             recentList.setBackground(WHITE);
             recentList.setLayout(new BoxLayout(recentList, BoxLayout.Y_AXIS));
-            card.add(recentList, BorderLayout.CENTER);
+            javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(recentList); scroll.setBorder(null); scroll.setOpaque(false); scroll.getViewport().setOpaque(false); scroll.getVerticalScrollBar().setUnitIncrement(16); card.add(scroll, java.awt.BorderLayout.CENTER);
             return card;
         }
 
@@ -1894,7 +1897,7 @@ public class GeojiTalchulApp extends JFrame {
             recentList.removeAll();
             List<Expense> list = state.expenses.stream()
                     .sorted(Comparator.comparing((Expense x) -> x.date).reversed())
-                    .limit(6).collect(Collectors.toList());
+                    .limit(30).collect(Collectors.toList());
             for (Expense e : list) recentList.add(expenseRow(e));
             recentList.revalidate();
             recentList.repaint();
@@ -1941,6 +1944,18 @@ public class GeojiTalchulApp extends JFrame {
             row.add(date, BorderLayout.WEST);
             row.add(categoryBox, BorderLayout.CENTER);
             row.add(amount, BorderLayout.EAST);
+            
+            // 더블 클릭 시 상세 정보 창 띄우기
+            row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            row.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent ev) {
+                    if (ev.getClickCount() == 2) {
+                        statisticsPanel.showExpenseDetail(e);
+                    }
+                }
+            });
+            
             return row;
         }
     }
@@ -4487,11 +4502,25 @@ public class GeojiTalchulApp extends JFrame {
             status.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
             status.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-            JButton select = primaryButton(current ? "사용 중" : "적용");
+            JButton select = primaryButton(current ? "착용 중" : "착용하기");
             select.setAlignmentX(Component.CENTER_ALIGNMENT);
             select.setEnabled(!current);
             select.addActionListener(e -> {
                 state.currentSkin = skinFile;
+                
+                // 서버에 착용 상태 저장
+                new SwingWorker<Void, Void>() {
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                        body.addProperty("userId", currentUserId);
+                        body.addProperty("alertThreshold", state.alertThreshold);
+                        body.addProperty("currentSkin", state.currentSkin);
+                        httpPost("http://localhost:8080/api/settings", body.toString());
+                        return null;
+                    }
+                }.execute();
+                
                 dlg.dispose();
                 refreshAll();
             });

@@ -9,7 +9,7 @@ public class AppSettingBean {
     private String alertWeekday;
     private int alertThreshold;
 
-    public AppSettingBean() {}
+    private String currentSkin = "poorman.png"; public AppSettingBean() {} public String getCurrentSkin() { return currentSkin; } public void setCurrentSkin(String s) { this.currentSkin = s; }
 
     public int getSettingId() { return settingId; }
     public void setSettingId(int settingId) { this.settingId = settingId; }
