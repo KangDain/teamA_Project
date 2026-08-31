@@ -21,10 +21,14 @@ public class StoreMgrHandler extends BaseMgrHandler {
             int itemId = ((Number) req.get("itemId")).intValue();
             boolean success = storeMgr.buyItem(userId, itemId);
             if (success) {
-                sendJsonResponse(exchange, 200, Map.of("success", true, "message", "포인트 상품 구매 성공!"));
+                sendJsonResponse(exchange, 200, Map.of("success", true, "message", "아이템 구매 완료!"));
             } else {
-                sendError(exchange, 400, "포인트가 부족하거나 상품 구매 실패");
+                sendError(exchange, 400, "포인트가 부족하거나 구매할 수 없습니다");
             }
+        } else if ("GET".equalsIgnoreCase(method) && path.endsWith("/purchases")) {
+            Map<String, String> params = getQueryParams(exchange);
+            int userId = Integer.parseInt(params.get("userId"));
+            sendJsonResponse(exchange, 200, storeMgr.listUserPurchases(userId));
         } else {
             sendJsonResponse(exchange, 200, storeMgr.listItems());
         }

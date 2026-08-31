@@ -75,4 +75,31 @@ public class StoreMgr {
         }
         return flag;
     }
+
+    public Vector<ItemBean> listUserPurchases(int userId) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        Vector<ItemBean> vlist = new Vector<>();
+        try {
+            con = pool.getConnection();
+            String sql = "SELECT i.* FROM purchase p JOIN item i ON p.item_id = i.item_id WHERE p.user_id = ?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setInt(1, userId);
+            rs = pstmt.executeQuery();
+            while (rs.next()) {
+                ItemBean bean = new ItemBean();
+                bean.setItemId(rs.getInt("item_id"));
+                bean.setProductName(rs.getString("product_name"));
+                bean.setProductType(rs.getString("product_type"));
+                bean.setPricePoint(rs.getInt("price_point"));
+                vlist.add(bean);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.freeConnection(con, pstmt, rs);
+        }
+        return vlist;
+    }
 }

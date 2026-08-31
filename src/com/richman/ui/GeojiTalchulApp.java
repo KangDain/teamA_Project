@@ -235,6 +235,40 @@ public class GeojiTalchulApp extends JFrame {
         }.execute();
     }
 
+    void loadMySkinsFromServer() {
+        new SwingWorker<com.google.gson.JsonArray, Void>() {
+            @Override
+            protected com.google.gson.JsonArray doInBackground() throws Exception {
+                com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/store/purchases?userId=" + currentUserId);
+                if (el != null && el.isJsonArray()) {
+                    return el.getAsJsonArray();
+                }
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    com.google.gson.JsonArray arr = get();
+                    if (arr != null) {
+                        state.ownedSkins.clear();
+                        state.ownedSkins.add("poorman.png"); // 기본 스킨은 무조건 포함
+                        for (int i = 0; i < arr.size(); i++) {
+                            com.google.gson.JsonObject item = arr.get(i).getAsJsonObject();
+                            String name = item.has("productName") ? item.get("productName").getAsString() : "";
+                            if (name.contains("거지")) {
+                                state.ownedSkins.add("poorman.png");
+                            } else if (name.contains("부자") || name.contains("캐릭터 꾸미기")) {
+                                state.ownedSkins.add("richman.png");
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }.execute();
+    }
+
     void loadMyBudgetFromServer() {
         new SwingWorker<com.google.gson.JsonElement, Void>() {
             @Override
@@ -409,6 +443,7 @@ public class GeojiTalchulApp extends JFrame {
                             loadMyBudgetFromServer();
                             loadMySettingsFromServer();
                             loadMyExpensesFromServer();
+                            loadMySkinsFromServer();
                             communityPanel.loadPostsFromServer();
 
                             String userName = res.has("userName") ? res.get("userName").getAsString() : loginId;
@@ -1614,15 +1649,16 @@ public class GeojiTalchulApp extends JFrame {
 
             card.add(left, BorderLayout.WEST);
 
-            //  [수정] 우측 캐릭터 및 말풍선 영역 생성
+            //  [우] 내 캐릭터 및 말풍선 영역
             JPanel rightBox = new JPanel(new BorderLayout());
             rightBox.setOpaque(false);
-            rightBox.setPreferredSize(new Dimension(240, 235));
+            rightBox.setPreferredSize(new Dimension(280, 235));
 
-            //  1. 말풍선 둥근 패널 만들기 (기본 상태는 숨김)
-            JPanel bubblePanel = new RoundedPanel(WHITE, 30);
+            //  1. 꼬리가 달린 말풍선 패널 생성
+            JPanel bubblePanel = new SpeechBubblePanel(WHITE, 30);
             bubblePanel.setLayout(new BorderLayout());
-            bubblePanel.setBorder(new EmptyBorder(10, 18, 10, 18)); // 말풍선 안쪽 빵빵한 여백
+            // 말풍선 꼬리(12px) 공간을 위해 아래쪽 여백을 22로 늘림
+            bubblePanel.setBorder(new EmptyBorder(10, 15, 22, 15)); 
             JLabel bubbleText = new JLabel("...");
             bubbleText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
             bubbleText.setForeground(TEXT);
@@ -1630,11 +1666,11 @@ public class GeojiTalchulApp extends JFrame {
             bubblePanel.add(bubbleText, BorderLayout.CENTER);
             bubblePanel.setVisible(false);
 
-            //  [수정된 부분] 말풍선이 켜지고 꺼질 때 사진이 요동치는 현상 완벽 방지!
-            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 15));
+            //  [핵심 부분] 말풍선이 나타날 때 캐릭터가 안 밀리게 함!
+            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10));
             bubbleWrapper.setOpaque(false);
-            //  이 줄을 추가해서 말풍선이 숨겨져 있어도 무조건 높이 60px의 빈 공간을 유지하게 만듭니다.
-            bubbleWrapper.setPreferredSize(new Dimension(240, 60)); 
+            //  빈 공간을 확보해서 말풍선이 나타나도 세로 80px을 미리 차지하게 합니다.
+            bubbleWrapper.setPreferredSize(new Dimension(280, 80)); 
             bubbleWrapper.add(bubblePanel);
             rightBox.add(bubbleWrapper, BorderLayout.NORTH);
 
@@ -1648,11 +1684,17 @@ public class GeojiTalchulApp extends JFrame {
             //  3. 거지 찰진 랜덤 대사 목록
             String[] quotes = {
                 "오늘 점심은 삼각김밥이다...",
-                "문성도원",
-                "피들스정",
                 "숨만 쉬어도 돈이 나가네...",
-                "노르톨트 후버",
-                "이러다간 진짜 길바닥 나앉아!"
+                "이러다간 진짜 길바닥 나앉아!",
+                "내 지갑은 양파 같아... 열 때마다 눈물이 나거든.",
+                "물배 채우는 것도 하루 이틀이지, 이러다 영양실조 걸리겠어....",
+                "누가 길가다 만 원짜리 하나 안 떨어뜨리나 바닥만 보고 걷는다니까.",
+                "로또 4등이라도 당첨되면 소원이 없겠네, 진짜.",
+                "이번 달 월급은 통장에 로그인했다가 흔적도 없이 로그아웃했어!",
+                "광합성으로 배를 채울 수 있으면 얼마나 좋을까...",
+                "통장 잔고가 내 시력보다 더 떨어졌어....",
+                "내일은 동네 박스 줍는 할아버지랑 구역 경쟁이라도 해야 할 판이야...",
+                "누가 나 좀 유기견처럼 주워 안 가나? 밥만 주면 집 진짜 잘 지키는데."
             };
 
             // 말풍선 사라지는 타이머를 담을 변수
@@ -1671,7 +1713,7 @@ public class GeojiTalchulApp extends JFrame {
 
                     // 랜덤으로 멘트 뽑아서 말풍선에 꽂기
                     int r = (int)(Math.random() * quotes.length);
-                    bubbleText.setText(quotes[r]);
+                    bubbleText.setText("<html><div style='width:180px; text-align:center;'>" + quotes[r] + "</div></html>");
                     bubblePanel.setVisible(true); // 말풍선 뿅!
                     
                     // 폭풍 광클(연타) 시 기존 타이머 끄고 새로 2.5초 리셋
@@ -4074,7 +4116,11 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void refresh() {
-            myPoints.setText("보유 포인트  " + state.points + " P");
+            myPoints.setText("내 포인트  " + state.points + " P");
+            removeAll();
+            add(buildStore(), BorderLayout.CENTER);
+            revalidate();
+            repaint();
         }
     }
 
@@ -4564,6 +4610,50 @@ public class GeojiTalchulApp extends JFrame {
             g2.setColor(new Color(228, 232, 237));
             g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, radius, radius);
             
+            g2.dispose();
+            super.paintComponent(g);
+        }
+    }
+
+    static class SpeechBubblePanel extends JPanel {
+        Color bg;
+        int radius;
+        int tailSize = 12;
+
+        SpeechBubblePanel(Color bg, int radius) {
+            this.bg = bg;
+            this.radius = radius;
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int width = getWidth() - 1;
+            int height = getHeight() - 1;
+            int bubbleHeight = height - tailSize;
+
+            java.awt.geom.RoundRectangle2D.Float rect = new java.awt.geom.RoundRectangle2D.Float(0, 0, width, bubbleHeight, radius, radius);
+            
+            int tailX = width / 2;
+            int tailY = bubbleHeight;
+            java.awt.Polygon tail = new java.awt.Polygon(
+                new int[]{tailX - 10, tailX + 10, tailX},
+                new int[]{tailY, tailY, tailY + tailSize},
+                3
+            );
+
+            java.awt.geom.Area area = new java.awt.geom.Area(rect);
+            area.add(new java.awt.geom.Area(tail));
+
+            g2.setColor(bg);
+            g2.fill(area);
+
+            g2.setColor(new Color(228, 232, 237));
+            g2.draw(area);
+
             g2.dispose();
             super.paintComponent(g);
         }
