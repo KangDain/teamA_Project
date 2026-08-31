@@ -122,7 +122,12 @@ public class GeojiTalchulApp extends JFrame {
     static Font BASE_FONT;
     static {
         try {
-            java.io.File fontFile = new java.io.File("C:/Java/project_A/font/MemomentKkukkukk.ttf");
+            java.io.File fontFile = new java.io.File("font/MemomentKkukkukk.ttf");
+            // 만약 IDE 등에서 실행 위치가 다를 경우를 대비한 상대경로 폴백
+            if (!fontFile.exists()) {
+                fontFile = new java.io.File("../font/MemomentKkukkukk.ttf");
+            }
+            
             if(fontFile.exists()) {
                 BASE_FONT = Font.createFont(Font.TRUETYPE_FONT, fontFile);
                 java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(BASE_FONT);
