@@ -126,4 +126,70 @@ public class PostMgr {
         }
         return isLikedNow;
     }
+
+    public boolean updatePost(int postId, int userId, String newContent, String newImageData) {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+        boolean flag = false;
+        try {
+            con = pool.getConnection();
+            String sql;
+            if (newImageData != null) {
+                sql = "UPDATE post SET content=?, image_data=? WHERE post_id=? AND user_id=?";
+                pstmt = con.prepareStatement(sql);
+                pstmt.setString(1, newContent);
+                pstmt.setString(2, newImageData);
+                pstmt.setInt(3, postId);
+                pstmt.setInt(4, userId);
+            } else {
+                sql = "UPDATE post SET content=? WHERE post_id=? AND user_id=?";
+                pstmt = con.prepareStatement(sql);
+                pstmt.setString(1, newContent);
+                pstmt.setInt(2, postId);
+                pstmt.setInt(3, userId);
+            }
+            if (pstmt.executeUpdate() == 1) flag = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.freeConnection(con, pstmt);
+        }
+        return flag;
+    }
+
+    public boolean deletePost(int postId, int userId) {
+        Connection con = null;
+        PreparedStatement pstmtLike = null;
+        PreparedStatement pstmt = null;
+        boolean flag = false;
+        try {
+            con = pool.getConnection();
+            con.setAutoCommit(false);
+            
+            // 1. post_like 삭제
+            String sqlLike = "DELETE FROM post_like WHERE post_id=?";
+            pstmtLike = con.prepareStatement(sqlLike);
+            pstmtLike.setInt(1, postId);
+            pstmtLike.executeUpdate();
+            
+            // 2. post 삭제
+            String sql = "DELETE FROM post WHERE post_id=? AND user_id=?";
+            pstmt = con.prepareStatement(sql);
+            pstmt.setInt(1, postId);
+            pstmt.setInt(2, userId);
+            if (pstmt.executeUpdate() == 1) flag = true;
+            
+            if (flag) con.commit();
+            else con.rollback();
+            
+            con.setAutoCommit(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+            try { if (con != null) con.rollback(); } catch (Exception ex) {}
+        } finally {
+            if (pstmtLike != null) try { pstmtLike.close(); } catch (Exception ex) {}
+            pool.freeConnection(con, pstmt);
+        }
+        return flag;
+    }
 }

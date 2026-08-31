@@ -29,8 +29,29 @@ public class PostMgrHandler extends BaseMgrHandler {
             PostBean bean = parseRequestBody(exchange, PostBean.class);
             boolean success = postMgr.insertPost(bean);
             sendJsonResponse(exchange, success ? 201 : 400, Map.of("success", success));
+        } else if ("PUT".equalsIgnoreCase(method)) {
+            String[] parts = path.split("/");
+            if (parts.length >= 4) {
+                int postId = Integer.parseInt(parts[3]);
+                PostBean bean = parseRequestBody(exchange, PostBean.class);
+                boolean success = postMgr.updatePost(postId, bean.getUserId(), bean.getContent(), bean.getImageData());
+                sendJsonResponse(exchange, success ? 200 : 400, Map.of("success", success));
+            } else {
+                sendError(exchange, 400, "Invalid Request");
+            }
+        } else if ("DELETE".equalsIgnoreCase(method)) {
+            String[] parts = path.split("/");
+            if (parts.length >= 4) {
+                int postId = Integer.parseInt(parts[3]);
+                Map<String, String> params = getQueryParams(exchange);
+                int userId = Integer.parseInt(params.getOrDefault("userId", "0"));
+                boolean success = postMgr.deletePost(postId, userId);
+                sendJsonResponse(exchange, success ? 200 : 400, Map.of("success", success));
+            } else {
+                sendError(exchange, 400, "Invalid Request");
+            }
         } else {
-            sendError(exchange, 405, "지원하지 않는 메소드입니다.");
+            sendError(exchange, 405, "Method Not Allowed");
         }
     }
 }

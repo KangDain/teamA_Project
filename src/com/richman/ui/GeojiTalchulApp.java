@@ -1,4 +1,4 @@
-﻿package com.richman.ui;
+package com.richman.ui;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -2908,6 +2908,7 @@ public class GeojiTalchulApp extends JFrame {
                         for (int i = 0; i < arr.size(); i++) {
                             com.google.gson.JsonObject item = arr.get(i).getAsJsonObject();
                             int postId = item.get("postId").getAsInt();
+                            int authorUserId = item.has("userId") ? item.get("userId").getAsInt() : 0;
                             String userName = item.has("userName") ? item.get("userName").getAsString() : "익명";
                             String profileBase64 = item.has("profileImage") && !item.get("profileImage").isJsonNull() ? item.get("profileImage").getAsString() : "";
                             String content = item.get("content").getAsString();
@@ -2931,12 +2932,15 @@ public class GeojiTalchulApp extends JFrame {
                                 } catch (Exception e) {}
                             }
                             
-                            feedContainer.add(buildInstaCard(postId, userName, profileImage, content, image, likeCount, isLiked));
+                            feedContainer.add(buildInstaCard(postId, authorUserId, userName, profileImage, content, image, likeCount, isLiked));
                             feedContainer.add(Box.createVerticalStrut(20));
                         }
                     }
                     feedContainer.revalidate();
                     feedContainer.repaint();
+                    SwingUtilities.invokeLater(() -> {
+                        feedContainer.scrollRectToVisible(new java.awt.Rectangle(0, 0, 1, 1));
+                    });
                 }
             }.execute();
         }
@@ -3837,6 +3841,98 @@ public class GeojiTalchulApp extends JFrame {
             dialog.setVisible(true);
         }
 
+        private void showEditPostDialog(int postId, String initialText) {
+            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "게시물 수정", true);
+            dialog.setSize(450, 480);
+            dialog.setLocationRelativeTo(this);
+            dialog.setLayout(new BorderLayout());
+            dialog.getContentPane().setBackground(WHITE);
+
+            JLabel title = new JLabel("게시물 수정", SwingConstants.CENTER);
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
+            title.setBorder(new EmptyBorder(20, 0, 15, 0));
+            dialog.add(title, BorderLayout.NORTH);
+
+            JPanel centerPanel = new JPanel(new BorderLayout(0, 15));
+            centerPanel.setOpaque(false);
+            centerPanel.setBorder(new EmptyBorder(10, 25, 10, 25));
+
+            final String[] selectedBase64 = {null}; 
+
+            JButton attachBtn = new JButton("사진 변경하기 (선택)");
+            attachBtn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
+            attachBtn.setBackground(new Color(245, 245, 245));
+            attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
+            attachBtn.setFocusPainted(false);
+            attachBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            attachBtn.addActionListener(e -> {
+                JFileChooser chooser = new JFileChooser();
+                chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("이미지 파일 (*.jpg, *.png, *.gif)", "jpg", "png", "gif"));
+                if (chooser.showOpenDialog(dialog) == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        byte[] bytes = java.nio.file.Files.readAllBytes(chooser.getSelectedFile().toPath());
+                        selectedBase64[0] = java.util.Base64.getEncoder().encodeToString(bytes);
+                        attachBtn.setText("새 사진: " + chooser.getSelectedFile().getName());
+                        attachBtn.setForeground(GREEN_DARK);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+            centerPanel.add(attachBtn, BorderLayout.NORTH);
+
+            JTextArea contentArea = new JTextArea(initialText);
+            contentArea.setLineWrap(true);
+            contentArea.setWrapStyleWord(true);
+            contentArea.setFont(BASE_FONT.deriveFont(Font.PLAIN, 15f));
+            contentArea.setBorder(new EmptyBorder(10, 10, 10, 10));
+            JScrollPane scrollPane = new JScrollPane(contentArea);
+            scrollPane.setBorder(new LineBorder(BORDER, 1));
+            centerPanel.add(scrollPane, BorderLayout.CENTER);
+
+            dialog.add(centerPanel, BorderLayout.CENTER);
+
+            JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            bottomPanel.setOpaque(false);
+            bottomPanel.setBorder(new EmptyBorder(10, 25, 20, 25));
+
+            JButton cancelBtn = flatButton("취소");
+            cancelBtn.addActionListener(e -> dialog.dispose());
+
+            JButton submitBtn = primaryButton("수정 완료");
+            submitBtn.addActionListener(e -> {
+                String text = contentArea.getText().trim();
+                if (!text.isEmpty()) {
+                    new SwingWorker<Void, Void>() {
+                        @Override
+                        protected Void doInBackground() throws Exception {
+                            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+                            body.addProperty("userId", currentUserId);
+                            body.addProperty("content", text);
+                            if (selectedBase64[0] != null) {
+                                body.addProperty("imageData", selectedBase64[0]);
+                            }
+                            httpPost("http://localhost:8080/api/posts/" + postId, body.toString(), "PUT");
+                            return null;
+                        }
+                        @Override
+                        protected void done() {
+                            loadPostsFromServer();
+                            dialog.dispose();
+                        }
+                    }.execute();
+                } else {
+                    JOptionPane.showMessageDialog(dialog, "내용을 입력해주세요.", "입력 오류", JOptionPane.WARNING_MESSAGE);
+                }
+            });
+
+            bottomPanel.add(cancelBtn);
+            bottomPanel.add(submitBtn);
+            dialog.add(bottomPanel, BorderLayout.SOUTH);
+
+            dialog.setVisible(true);
+        }
+
         void refresh() {
             loadRankingsFromServer();
             loadChallengesFromServer(); // 로그인/아웃 시 챌린지 갱신
@@ -3844,11 +3940,14 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         //  4. 댓글 기능 완벽하게 적출된 인스타 카드!
-        private JPanel buildInstaCard(int postId, String author, ImageIcon profileImage, String text, ImageIcon image, int likes, boolean isLikedInitial) {
+        private JPanel buildInstaCard(int postId, int authorUserId, String author, ImageIcon profileImage, String text, ImageIcon image, int likes, boolean isLikedInitial) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
             card.setMaximumSize(new Dimension(800, image != null ? 380 : 180)); 
+
+            JPanel headerWrapper = new JPanel(new BorderLayout());
+            headerWrapper.setOpaque(false);
 
             JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
             header.setOpaque(false);
@@ -3865,7 +3964,7 @@ public class GeojiTalchulApp extends JFrame {
                     Image scaledProfile = pIcon.getImage().getScaledInstance(36, 36, Image.SCALE_SMOOTH);
                     profilePic.setIcon(new ImageIcon(scaledProfile));
                 } catch (Exception e) {
-                    profilePic.setText("�");
+                    profilePic.setText("?");
                 }
             }
 
@@ -3873,7 +3972,52 @@ public class GeojiTalchulApp extends JFrame {
             nameLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
             header.add(profilePic);
             header.add(nameLabel);
+            headerWrapper.add(header, BorderLayout.WEST);
 
+            if (currentUserId == authorUserId) {
+                JPanel actionPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
+                actionPanel.setOpaque(false);
+                
+                JButton editBtn = new JButton("수정");
+                editBtn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
+                editBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                editBtn.setFocusPainted(false);
+                editBtn.addActionListener(e -> {
+                    showEditPostDialog(postId, text);
+                });
+                
+                JButton delBtn = new JButton("삭제");
+                delBtn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
+                delBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                delBtn.setForeground(RED);
+                delBtn.setFocusPainted(false);
+                delBtn.addActionListener(e -> {
+                    int ans = JOptionPane.showConfirmDialog(GeojiTalchulApp.this, "정말 삭제하시겠습니까?", "게시물 삭제", JOptionPane.YES_NO_OPTION);
+                    if (ans == JOptionPane.YES_OPTION) {
+                        new SwingWorker<Void, Void>() {
+                            @Override
+                            protected Void doInBackground() throws Exception {
+                                String url = "http://localhost:8080/api/posts/" + postId + "?userId=" + currentUserId;
+                                java.net.URL u = new java.net.URL(url);
+                                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) u.openConnection();
+                                conn.setRequestMethod("DELETE");
+                                conn.getResponseCode();
+                                return null;
+                            }
+                            @Override
+                            protected void done() {
+                                loadPostsFromServer();
+                            }
+                        }.execute();
+                    }
+                });
+                
+                actionPanel.add(editBtn);
+                actionPanel.add(delBtn);
+                headerWrapper.add(actionPanel, BorderLayout.EAST);
+            }
+
+            card.add(headerWrapper, BorderLayout.NORTH);
             JPanel bottom = new JPanel(new BorderLayout(0, 8));
             bottom.setOpaque(false);
             
@@ -3942,7 +4086,7 @@ public class GeojiTalchulApp extends JFrame {
             bottom.add(actions, BorderLayout.NORTH);
             bottom.add(contentArea, BorderLayout.CENTER);
 
-            card.add(header, BorderLayout.NORTH);
+            
             
             if (image != null) {
                 JPanel imageBox = new JPanel(new BorderLayout());
@@ -4614,10 +4758,14 @@ public class GeojiTalchulApp extends JFrame {
     }
 
     JsonObject httpPost(String urlStr, String jsonBody) {
+        return httpPost(urlStr, jsonBody, "POST");
+    }
+
+    JsonObject httpPost(String urlStr, String jsonBody, String method) {
         try {
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.setRequestMethod("POST");
+            conn.setRequestMethod(method);
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setRequestProperty("Accept", "application/json");
             conn.setConnectTimeout(5000);
