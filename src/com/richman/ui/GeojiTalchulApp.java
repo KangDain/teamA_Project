@@ -118,10 +118,37 @@ public class GeojiTalchulApp extends JFrame {
     static final Color ORANGE = new Color(232, 155, 72); 
     static final Color PURPLE = new Color(132, 103, 175); 
 
-    // 기본 폰트 설정
-    static final Font FONT = new Font("Malgun Gothic", Font.PLAIN, 14);
-    static final Font FONT_BOLD = new Font("Malgun Gothic", Font.BOLD, 14);
-    static final Font FONT_TITLE = new Font("Malgun Gothic", Font.BOLD, 25);
+    // 커스텀 폰트 객체를 직접 저장
+    static Font BASE_FONT;
+    static {
+        try {
+            java.io.File fontFile = new java.io.File("C:/Java/project_A/font/MemomentKkukkukk.ttf");
+            if(fontFile.exists()) {
+                BASE_FONT = Font.createFont(Font.TRUETYPE_FONT, fontFile);
+                java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(BASE_FONT);
+                
+                java.util.Enumeration<Object> keys = javax.swing.UIManager.getDefaults().keys();
+                Font defaultFont = BASE_FONT.deriveFont(Font.PLAIN, 14f);
+                while (keys.hasMoreElements()) {
+                    Object key = keys.nextElement();
+                    Object value = javax.swing.UIManager.get(key);
+                    if (value instanceof javax.swing.plaf.FontUIResource || value instanceof Font) {
+                        javax.swing.UIManager.put(key, new javax.swing.plaf.FontUIResource(defaultFont));
+                    }
+                }
+            } else {
+                System.out.println("폰트 파일을 찾을 수 없습니다: " + fontFile.getAbsolutePath());
+                BASE_FONT = new Font("Malgun Gothic", Font.PLAIN, 14);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            BASE_FONT = new Font("Malgun Gothic", Font.PLAIN, 14);
+        }
+    }
+
+    static final Font FONT = BASE_FONT.deriveFont(Font.PLAIN, 14f);
+    static final Font FONT_BOLD = BASE_FONT.deriveFont(Font.BOLD, 14f);
+    static final Font FONT_TITLE = BASE_FONT.deriveFont(Font.BOLD, 25f);
 
     // --- 애플리케이션 상태 (전역 변수) ---
     final AppState state = new AppState();
@@ -383,7 +410,7 @@ public class GeojiTalchulApp extends JFrame {
         card.setBorder(new EmptyBorder(50, 60, 50, 60));
 
         JLabel title = new JLabel("거지탈출", SwingConstants.CENTER);
-        title.setFont(new Font("Malgun Gothic", Font.BOLD, 32));
+        title.setFont(BASE_FONT.deriveFont(Font.BOLD, 32f));
         title.setForeground(GREEN_DARK);
         card.add(title, BorderLayout.NORTH);
 
@@ -397,7 +424,7 @@ public class GeojiTalchulApp extends JFrame {
         
         JPasswordField pwField = new JPasswordField();
         pwField.setBorder(BorderFactory.createTitledBorder(new LineBorder(BORDER), "비밀번호"));
-        pwField.setFont(FONT);
+        pwField.setFont(new Font("SansSerif", Font.PLAIN, 14));
         
         form.add(idField);
         form.add(pwField);
@@ -524,7 +551,7 @@ public class GeojiTalchulApp extends JFrame {
 
         int r = 0;
         JTextField signupIdField    = new JTextField(15);
-        JPasswordField signupPwField = new JPasswordField(15);
+        JPasswordField signupPwField = new JPasswordField(15); signupPwField.setFont(new Font("SansSerif", Font.PLAIN, 14));
         JTextField signupNameField  = new JTextField(15);
         JTextField signupBirthField = new JTextField(15);
         JTextField signupPhoneField = new JTextField(15);
@@ -869,8 +896,8 @@ public class GeojiTalchulApp extends JFrame {
         //  2. 폼 항목들 순서대로 꽂아 넣기 (중복 방지!)
         addFormRow(card, g, r++, "프로필", profileBox); 
         JTextField nameField = new JTextField(userLabel.getText().replace(" 님", ""));
-        JPasswordField oldPwField = new JPasswordField();
-        JPasswordField newPwField = new JPasswordField();
+        JPasswordField oldPwField = new JPasswordField(); oldPwField.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        JPasswordField newPwField = new JPasswordField(); newPwField.setFont(new Font("SansSerif", Font.PLAIN, 14));
         
         addFormRow(card, g, r++, "닉네임", nameField);
         addFormRow(card, g, r++, "기존 비밀번호", oldPwField);
@@ -1072,7 +1099,7 @@ public class GeojiTalchulApp extends JFrame {
         root.setBorder(new EmptyBorder(24, 24, 20, 24));
 
         JLabel title = new JLabel("앱 설정");
-        title.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
+        title.setFont(BASE_FONT.deriveFont(Font.BOLD, 22f));
         root.add(title, BorderLayout.NORTH);
 
         JPanel form = new JPanel();
@@ -1242,7 +1269,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel addBox = new JPanel(new BorderLayout(5, 0));
             addBox.setOpaque(false);
             JTextField addTf = new JTextField(10);
-            addTf.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            addTf.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
             addTf.setToolTipText("친구의 로그인 아이디를 입력하세요");
             JButton addBtn = primaryButton("친구신청");
             addBtn.setPreferredSize(new Dimension(95, 32));
@@ -1305,7 +1332,7 @@ public class GeojiTalchulApp extends JFrame {
                         listContainer.removeAll();
                         if (friendMap.isEmpty()) {
                             JLabel empty = new JLabel("등록된 친구가 없습니다.");
-                            empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            empty.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                             empty.setForeground(MUTED);
                             empty.setAlignmentX(Component.CENTER_ALIGNMENT);
                             empty.setBorder(new EmptyBorder(20, 0, 0, 0));
@@ -1322,9 +1349,9 @@ public class GeojiTalchulApp extends JFrame {
                                     new EmptyBorder(10, 15, 10, 15)
                                 ));
                                 JLabel name = new JLabel(fName);
-                                name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                                name.setFont(BASE_FONT.deriveFont(Font.BOLD, 15f));
                                 JButton del = new JButton("삭제");
-                                del.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                del.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
                                 del.setBackground(new Color(255, 235, 235));
                                 del.setForeground(RED);
                                 del.setBorder(new EmptyBorder(4, 10, 4, 10));
@@ -1360,7 +1387,7 @@ public class GeojiTalchulApp extends JFrame {
                         if (reqArr.size() == 0) {
                             tabs.setTitleAt(1, "받은 요청");
                             JLabel empty = new JLabel("받은 요청이 없습니다.");
-                            empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            empty.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                             empty.setForeground(MUTED);
                             empty.setAlignmentX(Component.CENTER_ALIGNMENT);
                             empty.setBorder(new EmptyBorder(20, 0, 0, 0));
@@ -1381,13 +1408,13 @@ public class GeojiTalchulApp extends JFrame {
                                     new EmptyBorder(10, 15, 10, 15)
                                 ));
                                 JLabel name = new JLabel(fName);
-                                name.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+                                name.setFont(BASE_FONT.deriveFont(Font.BOLD, 15f));
                                 
                                 JPanel btnBox = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
                                 btnBox.setOpaque(false);
                                 
                                 JButton acceptBtn = new JButton("수락");
-                                acceptBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                acceptBtn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
                                 acceptBtn.setBackground(new Color(230, 245, 238));
                                 acceptBtn.setForeground(GREEN_DARK);
                                 acceptBtn.setBorder(new EmptyBorder(4, 10, 4, 10));
@@ -1395,7 +1422,7 @@ public class GeojiTalchulApp extends JFrame {
                                 acceptBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                                 
                                 JButton rejectBtn = new JButton("거절");
-                                rejectBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+                                rejectBtn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
                                 rejectBtn.setBackground(new Color(255, 235, 235));
                                 rejectBtn.setForeground(RED);
                                 rejectBtn.setBorder(new EmptyBorder(4, 10, 4, 10));
@@ -1553,7 +1580,7 @@ public class GeojiTalchulApp extends JFrame {
             header.setOpaque(false);
             header.setLayout(new BoxLayout(header, BoxLayout.Y_AXIS));
             JLabel title = new JLabel("최근 3개월 반복 지출 후보");
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 22f));
             JLabel desc = new JLabel("같은 중분류와 같은 금액이 반복되어 고정 지출로 추정된 항목입니다.");
             desc.setForeground(MUTED);
             desc.setBorder(new EmptyBorder(6, 0, 10, 0));
@@ -1588,7 +1615,7 @@ public class GeojiTalchulApp extends JFrame {
                 info.add(repeat);
 
                 JLabel amount = new JLabel(won(e.amount));
-                amount.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+                amount.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
                 amount.setForeground(RED);
                 row.add(info, BorderLayout.CENTER);
                 row.add(amount, BorderLayout.EAST);
@@ -1629,13 +1656,13 @@ public class GeojiTalchulApp extends JFrame {
 
             JLabel title = new JLabel("이번 달 소비 금액");
             title.setForeground(WHITE);
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
 
             // 소비 금액을 가장 크게 표시하고, 아래에 목표 예산에서 차감한 잔여 금액을 표시
             spentLabel.setForeground(WHITE);
-            spentLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 45));
+            spentLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 45f));
             remainLabel.setForeground(new Color(240, 245, 234));
-            remainLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 21));
+            remainLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 21f));
             budgetLabel.setForeground(new Color(224, 235, 211));
             budgetLabel.setFont(FONT_BOLD);
 
@@ -1659,11 +1686,27 @@ public class GeojiTalchulApp extends JFrame {
             bubblePanel.setLayout(new BorderLayout());
             // 말풍선 꼬리(12px) 공간을 위해 아래쪽 여백을 22로 늘림
             bubblePanel.setBorder(new EmptyBorder(10, 15, 22, 15)); 
-            JLabel bubbleText = new JLabel("...");
-            bubbleText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            
+            javax.swing.JTextPane bubbleText = new javax.swing.JTextPane();
+            bubbleText.setOpaque(false);
+            bubbleText.setEditable(false);
+            bubbleText.setFocusable(false);
+            bubbleText.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
             bubbleText.setForeground(TEXT);
-            bubbleText.setHorizontalAlignment(SwingConstants.CENTER);
-            bubblePanel.add(bubbleText, BorderLayout.CENTER);
+            
+            // 텍스트 가운데 정렬
+            javax.swing.text.StyledDocument doc = bubbleText.getStyledDocument();
+            javax.swing.text.SimpleAttributeSet center = new javax.swing.text.SimpleAttributeSet();
+            javax.swing.text.StyleConstants.setAlignment(center, javax.swing.text.StyleConstants.ALIGN_CENTER);
+            doc.setParagraphAttributes(0, doc.getLength(), center, false);
+            
+            // 텍스트가 양옆으로 너무 늘어나지 않게 좌우 패딩을 주어 강제 줄바꿈 유도
+            JPanel textWrapper = new JPanel(new BorderLayout());
+            textWrapper.setOpaque(false);
+            textWrapper.setBorder(new EmptyBorder(0, 30, 0, 30));
+            textWrapper.add(bubbleText, BorderLayout.CENTER);
+            
+            bubblePanel.add(textWrapper, BorderLayout.CENTER);
             bubblePanel.setVisible(false);
 
             //  [핵심 부분] 말풍선이 나타날 때 캐릭터가 안 밀리게 함!
@@ -1682,20 +1725,8 @@ public class GeojiTalchulApp extends JFrame {
             homeCharacter.setIcon(loadSkinIcon(state.currentSkin, 140, 140));
 
             //  3. 거지 찰진 랜덤 대사 목록
-            String[] quotes = {
-                "오늘 점심은 삼각김밥이다...",
-                "숨만 쉬어도 돈이 나가네...",
-                "이러다간 진짜 길바닥 나앉아!",
-                "내 지갑은 양파 같아... 열 때마다 눈물이 나거든.",
-                "물배 채우는 것도 하루 이틀이지, 이러다 영양실조 걸리겠어....",
-                "누가 길가다 만 원짜리 하나 안 떨어뜨리나 바닥만 보고 걷는다니까.",
-                "로또 4등이라도 당첨되면 소원이 없겠네, 진짜.",
-                "이번 달 월급은 통장에 로그인했다가 흔적도 없이 로그아웃했어!",
-                "광합성으로 배를 채울 수 있으면 얼마나 좋을까...",
-                "통장 잔고가 내 시력보다 더 떨어졌어....",
-                "내일은 동네 박스 줍는 할아버지랑 구역 경쟁이라도 해야 할 판이야...",
-                "누가 나 좀 유기견처럼 주워 안 가나? 밥만 주면 집 진짜 잘 지키는데."
-            };
+            String[] quotes = { "탕후루가 웬 말이냐, 흙 파먹게 생겼는데", "로또 당첨되면 치킨 두 마리 시킨다", "숨 쉬는 것도 돈이다", "오늘 점심은 삼각김밥 하나", "잔고가 살살 녹는다",
+"이러다가 진짜 길바닥에 나앉겠어!", "내 통장은 텅장...", "물 한잔도 아껴 먹자", "월급날은 대체 언제 오냐...", "티끌 모아 티끌...", "돈 냄새 좀 맡아보자!", "내 인생에 플렉스는 없다", "보일러 틀면 사치다, 패딩 입고 자자", "컵라면 국물은 낼 아침용, 버리지 마라" };
 
             // 말풍선 사라지는 타이머를 담을 변수
             final javax.swing.Timer[] hideTimer = {null};
@@ -1713,7 +1744,9 @@ public class GeojiTalchulApp extends JFrame {
 
                     // 랜덤으로 멘트 뽑아서 말풍선에 꽂기
                     int r = (int)(Math.random() * quotes.length);
-                    bubbleText.setText("<html><div style='width:180px; text-align:center;'>" + quotes[r] + "</div></html>");
+                    bubbleText.setText(quotes[r]);
+                    // JTextPane은 setText 후 정렬이 풀릴 수 있으므로 다시 적용
+                    doc.setParagraphAttributes(0, doc.getLength(), center, false);
                     bubblePanel.setVisible(true); // 말풍선 뿅!
                     
                     // 폭풍 광클(연타) 시 기존 타이머 끄고 새로 2.5초 리셋
@@ -1751,7 +1784,7 @@ public class GeojiTalchulApp extends JFrame {
             card.setPreferredSize(new Dimension(355, 235));
             card.setLayout(new BorderLayout());
             JLabel title = new JLabel("지출 간편 등록");
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             title.setBorder(new EmptyBorder(22, 22, 10, 10));
             card.add(title, BorderLayout.NORTH);
 
@@ -1805,7 +1838,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel head = new JPanel(new BorderLayout());
             head.setOpaque(false);
             JLabel t = new JLabel("최근 지출 내역");
-            t.setFont(new Font("Malgun Gothic", Font.BOLD, 19));
+            t.setFont(BASE_FONT.deriveFont(Font.BOLD, 19f));
             JButton all = flatButton("전체 보기");
             all.addActionListener(e -> showCard("STATS"));
             head.setBorder(new EmptyBorder(22, 22, 10, 22));
@@ -1886,7 +1919,7 @@ public class GeojiTalchulApp extends JFrame {
 
             JLabel cat = new JLabel(e.large + " > " + e.medium);
             cat.setForeground(MUTED);
-            cat.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            cat.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
 
             JLabel item = new JLabel(
                     e.item == null || e.item.trim().isEmpty() ? "(내용 없음)" : e.item);
@@ -2021,7 +2054,7 @@ public class GeojiTalchulApp extends JFrame {
 
             List<Expense> items = state.expenses.stream().filter(e -> e.date.equals(date)).collect(Collectors.toList());
             JLabel total = new JLabel("총 지출 " + won(items.stream().mapToLong(e -> e.amount).sum()));
-            total.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            total.setFont(BASE_FONT.deriveFont(Font.BOLD, 20f));
             root.add(total, BorderLayout.NORTH);
 
             JPanel list = new JPanel();
@@ -2051,7 +2084,7 @@ public class GeojiTalchulApp extends JFrame {
                         esc(x.large) + " > " + esc(x.medium)
                 );
                 categoryLabel.setFont(
-                        new Font("Malgun Gothic", Font.PLAIN, 12)
+                        BASE_FONT.deriveFont(Font.PLAIN, 12f)
                 );
                 categoryLabel.setForeground(MUTED);
 
@@ -2161,7 +2194,7 @@ public class GeojiTalchulApp extends JFrame {
             pieHead.setOpaque(false);
             pieHead.setBorder(new EmptyBorder(18,18,8,18));
             JLabel pieTitle = new JLabel("카테고리별 지출 비중");
-            pieTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            pieTitle.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             pieHead.add(pieTitle, BorderLayout.WEST);
             
             JComboBox<String> pieCombo = new JComboBox<>(new String[]{"대분류", "중분류"});
@@ -2181,7 +2214,7 @@ public class GeojiTalchulApp extends JFrame {
             trendHead.setOpaque(false);
             trendHead.setBorder(new EmptyBorder(18,18,8,18));
             JLabel trendTitle = new JLabel("최근 지출 추이");
-            trendTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            trendTitle.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             trendHead.add(trendTitle, BorderLayout.WEST);
             
             JComboBox<String> trendCombo = new JComboBox<>(new String[]{"1개월", "6개월", "1년"});
@@ -2210,7 +2243,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel head = new JPanel(new BorderLayout());
             head.setOpaque(false);
             JLabel title = new JLabel("지출 내역 상세");
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 19));
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 19f));
             JLabel hint = new JLabel("날짜와 대·중·소분류별 실제 지출 내역을 확인할 수 있습니다.");
             hint.setForeground(MUTED);
             JPanel titleBox = new JPanel();
@@ -2293,10 +2326,10 @@ public class GeojiTalchulApp extends JFrame {
             header.setBackground(GREEN_DARK);
             header.setBorder(new EmptyBorder(20, 24, 20, 24));
             JLabel headerTitle = new JLabel(e.item == null || e.item.trim().isEmpty() ? e.small : e.item);
-            headerTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            headerTitle.setFont(BASE_FONT.deriveFont(Font.BOLD, 20f));
             headerTitle.setForeground(WHITE);
             JLabel headerAmount = new JLabel("-" + won(e.amount));
-            headerAmount.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            headerAmount.setFont(BASE_FONT.deriveFont(Font.BOLD, 20f));
             headerAmount.setForeground(new Color(255, 200, 200));
             header.add(headerTitle, BorderLayout.WEST);
             header.add(headerAmount, BorderLayout.EAST);
@@ -2383,7 +2416,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel p = roundedPanel(WHITE, 18);
             p.setLayout(new BorderLayout());
             JLabel l = new JLabel(title);
-            l.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            l.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             l.setBorder(new EmptyBorder(18,18,8,18));
             p.add(l, BorderLayout.NORTH);
             p.add(chart, BorderLayout.CENTER);
@@ -2542,7 +2575,7 @@ public class GeojiTalchulApp extends JFrame {
             String centerTitle = (hoveredCategory != null) ? hoveredCategory : maxCategory;
 
             g2.setColor(TEXT);
-            g2.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            g2.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             FontMetrics fm = g2.getFontMetrics();
 
             int textX = x + (diameter - fm.stringWidth(centerTitle)) / 2;
@@ -2565,7 +2598,7 @@ public class GeojiTalchulApp extends JFrame {
                 // 마우스 호버 중인 항목은 범례 글씨 강조
                 if (en.getKey().equals(hoveredCategory)) {
                     g2.setColor(GREEN_DARK);
-                    g2.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                    g2.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
                 } else {
                     g2.setColor(TEXT);
                     g2.setFont(FONT);
@@ -2661,7 +2694,7 @@ public class GeojiTalchulApp extends JFrame {
                 
                 if (label != null) {
                     g2.setColor(TEXT);
-                    g2.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+                    g2.setFont(BASE_FONT.deriveFont(Font.PLAIN, 11f));
                     FontMetrics fm = g2.getFontMetrics();
                     int textWidth = fm.stringWidth(label);
                     // 점(xx)을 기준으로 글자를 완벽히 가운데 정렬
@@ -2719,7 +2752,7 @@ public class GeojiTalchulApp extends JFrame {
             p.add(head,BorderLayout.NORTH);
 
             JList<String> list = new JList<>(rankModel);
-            list.setFont(new Font("Malgun Gothic",Font.BOLD,16));
+            list.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
             list.setFixedCellHeight(62);
             list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -2730,7 +2763,7 @@ public class GeojiTalchulApp extends JFrame {
                         boolean isSelected, boolean cellHasFocus) {
                     JLabel label = (JLabel) super.getListCellRendererComponent(
                             list, value, index, isSelected, cellHasFocus);
-                    label.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+                    label.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
                     label.setBorder(new EmptyBorder(10, 18, 10, 18));
 
                     if (index == 0) {
@@ -2801,7 +2834,7 @@ public class GeojiTalchulApp extends JFrame {
             JLabel title = new JLabel("그룹 지출 챌린지");
             title.setFont(FONT_TITLE);
             JLabel sub = new JLabel("함께 절약 목표를 세우고 달성해 보세요!");
-            sub.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            sub.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             sub.setForeground(MUTED);
             titleBox.add(title);
             titleBox.add(Box.createVerticalStrut(3));
@@ -2998,7 +3031,7 @@ public class GeojiTalchulApp extends JFrame {
             challengeCardContainer.removeAll();
             if (challengeList.isEmpty()) {
                 JLabel empty = new JLabel("참여 중인 챌린지가 없습니다. 챌린지를 생성하거나 참여해 보세요!", SwingConstants.CENTER);
-                empty.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                empty.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                 empty.setForeground(MUTED);
                 empty.setAlignmentX(Component.CENTER_ALIGNMENT);
                 empty.setBorder(new EmptyBorder(40, 0, 0, 0));
@@ -3033,12 +3066,12 @@ public class GeojiTalchulApp extends JFrame {
             JPanel row1 = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
             row1.setOpaque(false);
             JLabel nameLabel = new JLabel(cd.name);
-            nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            nameLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
             nameLabel.setForeground(TEXT);
             row1.add(nameLabel);
             if (cd.isParticipating) {
                 JLabel ownerBadge = new JLabel(cd.isMine ? "  방장" : "  참여중");
-                ownerBadge.setFont(new Font("Malgun Gothic", Font.BOLD, 11));
+                ownerBadge.setFont(BASE_FONT.deriveFont(Font.BOLD, 11f));
                 ownerBadge.setForeground(cd.isMine ? GREEN_DARK : BLUE);
                 ownerBadge.setOpaque(true);
                 ownerBadge.setBackground(cd.isMine ? new Color(230, 245, 238) : new Color(230, 238, 255));
@@ -3047,19 +3080,19 @@ public class GeojiTalchulApp extends JFrame {
             }
 
             JLabel dateLabel = new JLabel(cd.startDate + "  ~  " + cd.endDate);
-            dateLabel.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+            dateLabel.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
             dateLabel.setForeground(MUTED);
             dateLabel.setBorder(new EmptyBorder(3, 0, 0, 0));
 
             JPanel row3 = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
             row3.setOpaque(false);
             JLabel goalLbl = new JLabel("목표 " + String.format("%,d", cd.goalAmount) + "원");
-            goalLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            goalLbl.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             JLabel rewardLbl = new JLabel("보상 " + String.format("%,d", cd.rewardPoint) + "P");
-            rewardLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            rewardLbl.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             rewardLbl.setForeground(new Color(200, 140, 30));
             JLabel memberLbl = new JLabel(cd.memberCount + "명 참여");
-            memberLbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            memberLbl.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             memberLbl.setForeground(MUTED);
             row3.add(goalLbl); row3.add(rewardLbl); row3.add(memberLbl);
 
@@ -3071,7 +3104,7 @@ public class GeojiTalchulApp extends JFrame {
             card.add(info, BorderLayout.CENTER);
 
             JLabel arrow = new JLabel("›");
-            arrow.setFont(new Font("Malgun Gothic", Font.BOLD, 28));
+            arrow.setFont(BASE_FONT.deriveFont(Font.BOLD, 28f));
             arrow.setForeground(MUTED);
             card.add(arrow, BorderLayout.EAST);
 
@@ -3095,10 +3128,10 @@ public class GeojiTalchulApp extends JFrame {
             banner.setBackground(GREEN_DARK);
             banner.setBorder(new EmptyBorder(22, 24, 22, 24));
             JLabel bannerTitle = new JLabel("[챌린지]  " + cd.name);
-            bannerTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 20));
+            bannerTitle.setFont(BASE_FONT.deriveFont(Font.BOLD, 20f));
             bannerTitle.setForeground(WHITE);
             JLabel bannerOwner = new JLabel("방장: " + cd.ownerName);
-            bannerOwner.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            bannerOwner.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             bannerOwner.setForeground(new Color(200, 235, 220));
             JPanel bannerText = new JPanel();
             bannerText.setOpaque(false);
@@ -3136,7 +3169,7 @@ public class GeojiTalchulApp extends JFrame {
             JPanel memberHead = new JPanel(new BorderLayout());
             memberHead.setOpaque(false);
             JLabel memberTitle = new JLabel("참여 멤버");
-            memberTitle.setFont(new Font("Malgun Gothic", Font.BOLD, 15));
+            memberTitle.setFont(BASE_FONT.deriveFont(Font.BOLD, 15f));
             memberHead.add(memberTitle, BorderLayout.WEST);
             if (cd.isMine) {
                 JButton invBtn = flatButton("+초대");
@@ -3155,7 +3188,7 @@ public class GeojiTalchulApp extends JFrame {
                 JPanel mrow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 2));
                 mrow.setOpaque(false);
                 JLabel lbl = new JLabel("\u25CF  " + m);   // ● 불릿 포인트
-                lbl.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                lbl.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                 lbl.setForeground(TEXT);
                 mrow.add(lbl);
                 memberList.add(mrow);
@@ -3204,10 +3237,10 @@ public class GeojiTalchulApp extends JFrame {
 
         private void addDetailRow(JPanel parent, String key, String val) {
             JLabel k = new JLabel(key);
-            k.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            k.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             k.setForeground(MUTED);
             JLabel v = new JLabel(val);
-            v.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            v.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
             v.setForeground(TEXT);
             parent.add(k); parent.add(v);
         }
@@ -3251,7 +3284,7 @@ public class GeojiTalchulApp extends JFrame {
                         d.getContentPane().setBackground(BG);
 
                         JLabel title = new JLabel("  초대할 친구를 선택하세요", SwingConstants.LEFT);
-                        title.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+                        title.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
                         title.setBorder(new EmptyBorder(18, 18, 10, 18));
                         d.add(title, BorderLayout.NORTH);
 
@@ -3262,7 +3295,7 @@ public class GeojiTalchulApp extends JFrame {
                         List<JCheckBox> boxes = new ArrayList<>();
                         for (String f : friends) {
                             JCheckBox cb = new JCheckBox(f);
-                            cb.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                            cb.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                             cb.setOpaque(false);
                             cb.setBorder(new EmptyBorder(8, 10, 8, 10));
                             if (cd.members.stream().anyMatch(m -> m.contains(f))) {
@@ -3317,7 +3350,7 @@ public class GeojiTalchulApp extends JFrame {
             d.getContentPane().setBackground(BG);
 
             JLabel header = new JLabel("  새 챌린지 만들기", SwingConstants.LEFT);
-            header.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            header.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             header.setBorder(new EmptyBorder(20, 20, 12, 20));
             d.add(header, BorderLayout.NORTH);
 
@@ -3365,7 +3398,7 @@ public class GeojiTalchulApp extends JFrame {
             form.add(Box.createVerticalStrut(6));
 
             JLabel hint = new JLabel("  직접 입력: 20260827 / 2026-08-27 / 2026/08/27  또는 달력으로 선택");
-            hint.setFont(new Font("Malgun Gothic", Font.PLAIN, 11));
+            hint.setFont(BASE_FONT.deriveFont(Font.PLAIN, 11f));
             hint.setForeground(MUTED);
             form.add(hint);
 
@@ -3436,7 +3469,7 @@ public class GeojiTalchulApp extends JFrame {
             tf.setToolTipText("20260827, 2026-08-27, 2026/08/27 형태로 입력");
             resultRef[0] = tf;
             JButton calBtn = new JButton("달력");
-            calBtn.setFont(new Font("Malgun Gothic", Font.PLAIN, 13));
+            calBtn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 13f));
             calBtn.setPreferredSize(new Dimension(52, 36));
             calBtn.setFocusPainted(false);
             calBtn.setBackground(WHITE);
@@ -3467,7 +3500,7 @@ public class GeojiTalchulApp extends JFrame {
             nav.setBorder(new EmptyBorder(12, 16, 12, 16));
 
             JButton prev = new JButton("< 이전");
-            prev.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            prev.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
             prev.setForeground(WHITE);
             prev.setBackground(new Color(63, 95, 88));
             prev.setBorder(new EmptyBorder(6, 12, 6, 12));
@@ -3475,7 +3508,7 @@ public class GeojiTalchulApp extends JFrame {
             prev.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
             JButton next = new JButton("다음 >");
-            next.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            next.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
             next.setForeground(WHITE);
             next.setBackground(new Color(63, 95, 88));
             next.setBorder(new EmptyBorder(6, 12, 6, 12));
@@ -3483,7 +3516,7 @@ public class GeojiTalchulApp extends JFrame {
             next.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
             JLabel monthLabel = new JLabel("", SwingConstants.CENTER);
-            monthLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 17));
+            monthLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 17f));
             monthLabel.setForeground(WHITE);
             nav.add(prev, BorderLayout.WEST);
             nav.add(monthLabel, BorderLayout.CENTER);
@@ -3503,7 +3536,7 @@ public class GeojiTalchulApp extends JFrame {
             Color[] dayColors = {RED, TEXT, TEXT, TEXT, TEXT, TEXT, BLUE};
             for (int i = 0; i < 7; i++) {
                 JLabel h = new JLabel(dayNames[i], SwingConstants.CENTER);
-                h.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+                h.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
                 h.setForeground(dayColors[i]);
                 dayHeaderRow.add(h);
             }
@@ -3536,7 +3569,7 @@ public class GeojiTalchulApp extends JFrame {
                     }
                     final LocalDate ld = ym.atDay(dayNum);
                     JButton btn = new JButton(String.valueOf(dayNum));
-                    btn.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+                    btn.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
                     btn.setMargin(new Insets(0, 0, 0, 0));
                     btn.setFocusPainted(false);
                     btn.setBorderPainted(false);
@@ -3548,12 +3581,12 @@ public class GeojiTalchulApp extends JFrame {
                         // 오늘
                         btn.setBackground(new Color(230, 243, 237));
                         btn.setForeground(GREEN_DARK);
-                        btn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                        btn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
                     } else if (ld.equals(cursor[0])) {
                         // 선택된 날짜
                         btn.setBackground(GREEN_DARK);
                         btn.setForeground(WHITE);
-                        btn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+                        btn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
                     } else {
                         btn.setBackground(WHITE);
                         if (dow == DayOfWeek.SUNDAY) btn.setForeground(RED);
@@ -3614,7 +3647,7 @@ public class GeojiTalchulApp extends JFrame {
 
         private JLabel formLabel(String text) {
             JLabel l = new JLabel(text);
-            l.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            l.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
             l.setForeground(new Color(70, 80, 90));
             l.setBorder(new EmptyBorder(0, 0, 4, 0));
             l.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -3658,7 +3691,7 @@ public class GeojiTalchulApp extends JFrame {
             dialog.getContentPane().setBackground(WHITE);
 
             JLabel title = new JLabel("새 게시물 만들기", SwingConstants.CENTER);
-            title.setFont(new Font("Malgun Gothic", Font.BOLD, 18));
+            title.setFont(BASE_FONT.deriveFont(Font.BOLD, 18f));
             title.setBorder(new EmptyBorder(20, 0, 15, 0));
             dialog.add(title, BorderLayout.NORTH);
 
@@ -3670,7 +3703,7 @@ public class GeojiTalchulApp extends JFrame {
             final String[] selectedBase64 = {null}; 
 
             JButton attachBtn = new JButton("갤러리에서 사진 첨부하기");
-            attachBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            attachBtn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
             attachBtn.setBackground(new Color(245, 245, 245));
             attachBtn.setBorder(new EmptyBorder(15, 0, 15, 0));
             attachBtn.setFocusPainted(false);
@@ -3692,7 +3725,7 @@ public class GeojiTalchulApp extends JFrame {
             });
 
             JTextArea textArea = new JTextArea("오늘의 지출 내역이나 다짐을 공유해 보세요!");
-            textArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 15));
+            textArea.setFont(BASE_FONT.deriveFont(Font.PLAIN, 15f));
             textArea.setLineWrap(true);
             textArea.addFocusListener(new FocusAdapter() {
                 public void focusGained(FocusEvent e) {
@@ -3713,14 +3746,14 @@ public class GeojiTalchulApp extends JFrame {
 
             JButton cancelBtn = new JButton("취소");
             cancelBtn.setBackground(WHITE);
-            cancelBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            cancelBtn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
             cancelBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             cancelBtn.addActionListener(e -> dialog.dispose());
             
             JButton submitBtn = new JButton("게시하기");
             submitBtn.setBackground(GREEN_DARK); 
             submitBtn.setForeground(WHITE);
-            submitBtn.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+            submitBtn.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
             submitBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             
             submitBtn.addActionListener(e -> {
@@ -3805,7 +3838,7 @@ public class GeojiTalchulApp extends JFrame {
             }
 
             JLabel nameLabel = new JLabel(author);
-            nameLabel.setFont(new Font("Malgun Gothic", Font.BOLD, 16));
+            nameLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
             header.add(profilePic);
             header.add(nameLabel);
 
@@ -3823,13 +3856,13 @@ public class GeojiTalchulApp extends JFrame {
             likeBtn.setOpaque(false);
             likeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             JLabel likeIcon = new JLabel(isLiked[0] ? "\u2665" : "\u2661");
-            likeIcon.setFont(new Font("Malgun Gothic", Font.PLAIN, 18));
+            likeIcon.setFont(BASE_FONT.deriveFont(Font.PLAIN, 18f));
             likeIcon.setPreferredSize(new Dimension(24, 24));
             likeIcon.setHorizontalAlignment(SwingConstants.CENTER);
             likeIcon.setVerticalAlignment(SwingConstants.CENTER);
             likeIcon.setForeground(isLiked[0] ? RED : TEXT);
             JLabel likeText = new JLabel("좋아요 " + currentLikes[0]);
-            likeText.setFont(new Font("Malgun Gothic", Font.BOLD, 13));
+            likeText.setFont(BASE_FONT.deriveFont(Font.BOLD, 13f));
             likeText.setForeground(isLiked[0] ? RED : TEXT);
             likeBtn.add(likeIcon);
             likeBtn.add(likeText);
@@ -3868,7 +3901,7 @@ public class GeojiTalchulApp extends JFrame {
             actions.add(likeBtn); //  댓글 버튼(commentBtn)은 추가 안 하고 버림!
 
             JTextArea contentArea = new JTextArea(text);
-            contentArea.setFont(new Font("Malgun Gothic", Font.PLAIN, 14));
+            contentArea.setFont(BASE_FONT.deriveFont(Font.PLAIN, 14f));
             contentArea.setLineWrap(true);       
             contentArea.setWrapStyleWord(true);
             contentArea.setEditable(false);
@@ -3918,7 +3951,7 @@ public class GeojiTalchulApp extends JFrame {
             head.setOpaque(false);
             JLabel title=new JLabel("포인트 상점");
             title.setFont(FONT_TITLE);
-            myPoints.setFont(new Font("Malgun Gothic",Font.BOLD,20));
+            myPoints.setFont(BASE_FONT.deriveFont(Font.BOLD, 20f));
             myPoints.setForeground(GREEN_DARK);
             head.add(title,BorderLayout.WEST); head.add(myPoints,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);
@@ -4048,7 +4081,7 @@ public class GeojiTalchulApp extends JFrame {
             c.setLayout(new BoxLayout(c,BoxLayout.Y_AXIS));
 
             JLabel i=new JLabel(icon,SwingConstants.CENTER);
-            i.setFont(new Font("Malgun Gothic",Font.PLAIN,30));
+            i.setFont(BASE_FONT.deriveFont(Font.PLAIN, 30f));
 
             JLabel n=new JLabel(name);
             n.setFont(FONT_BOLD);
@@ -4359,7 +4392,7 @@ public class GeojiTalchulApp extends JFrame {
     /** 취소/닫기 등 보조 버튼 - 테두리 있는 스타일 */
     JButton styledSecondaryButton(String text) {
         JButton b = new JButton(text);
-        b.setFont(new Font("Malgun Gothic", Font.BOLD, 14));
+        b.setFont(BASE_FONT.deriveFont(Font.BOLD, 14f));
         b.setForeground(new Color(70, 80, 90));
         b.setBackground(WHITE);
         b.setFocusPainted(false);
@@ -4430,7 +4463,7 @@ public class GeojiTalchulApp extends JFrame {
         root.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         JLabel title = new JLabel("현재 보유중인 스킨");
-        title.setFont(new Font("Malgun Gothic", Font.BOLD, 22));
+        title.setFont(BASE_FONT.deriveFont(Font.BOLD, 22f));
         title.setForeground(TEXT);
         root.add(title, BorderLayout.NORTH);
 
@@ -4451,7 +4484,7 @@ public class GeojiTalchulApp extends JFrame {
             boolean current = skinFile.equals(state.currentSkin);
             JLabel status = new JLabel(current ? "현재 사용 중" : "", SwingConstants.CENTER);
             status.setForeground(GREEN_DARK);
-            status.setFont(new Font("Malgun Gothic", Font.PLAIN, 12));
+            status.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
             status.setAlignmentX(Component.CENTER_ALIGNMENT);
 
             JButton select = primaryButton(current ? "사용 중" : "적용");
@@ -4704,6 +4737,18 @@ public class GeojiTalchulApp extends JFrame {
             UIManager.put("TabbedPane.focusColor", new Color(0, 0, 0, 0)); // 클릭 시 생기는 촌스러운 포커스 선 제거
             
             UIManager.setLookAndFeel(new FlatLightLaf());
+
+            // FlatLaf가 기본 폰트를 덮어씌우는 것을 방지하기 위해 다시 한 번 커스텀 폰트 적용
+            UIManager.put("defaultFont", BASE_FONT.deriveFont(Font.PLAIN, 14f));
+            java.util.Enumeration<Object> keys = UIManager.getDefaults().keys();
+            Font defaultFont = BASE_FONT.deriveFont(Font.PLAIN, 14f);
+            while (keys.hasMoreElements()) {
+                Object key = keys.nextElement();
+                Object value = UIManager.get(key);
+                if (value instanceof javax.swing.plaf.FontUIResource || value instanceof Font) {
+                    UIManager.put(key, new javax.swing.plaf.FontUIResource(defaultFont));
+                }
+            }
         } catch (Exception ex) {
             System.err.println("FlatLaf 초기화 실패");
         }
