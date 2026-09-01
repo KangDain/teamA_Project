@@ -1,4 +1,4 @@
-﻿package com.richman.ui;
+package com.richman.ui;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -1979,7 +1979,8 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- CALENDAR ----------
     class CalendarPanel extends JPanel {
-        YearMonth month = YearMonth.now();
+        // YearMonth month = YearMonth.now();
+        YearMonth month = YearMonth.of(2026, 8);
         JPanel grid = new JPanel(new GridLayout(0, 7, 6, 6));
         JLabel monthLabel = new JLabel();
 
@@ -2680,7 +2681,9 @@ public class GeojiTalchulApp extends JFrame {
                 g2.drawLine(left,yy,left+w,yy);
             }
 
-            YearMonth now = YearMonth.now();
+            // YearMonth now = YearMonth.now();
+
+            YearMonth now = YearMonth.of(2026, 8);
             long max = 1;
             int count = mode == 1 ? now.lengthOfMonth() : mode; // 1개월은 해당 월의 일수
             long[] vals = new long[count];
@@ -2945,7 +2948,15 @@ public class GeojiTalchulApp extends JFrame {
                                 } catch (Exception e) {}
                             }
                             
-                            feedContainer.add(buildInstaCard(postId, authorUserId, userName, profileImage, content, image, likeCount, isLiked));
+                            String createdAt = item.has("createdAt") && !item.get("createdAt").isJsonNull() ? item.get("createdAt").getAsString() : "";
+                            if (createdAt.contains("T")) {
+                                createdAt = createdAt.replace("T", " ");
+                            }
+                            if (createdAt.length() > 16) {
+                                createdAt = createdAt.substring(0, 16);
+                            }
+                            
+                            feedContainer.add(buildInstaCard(postId, authorUserId, userName, profileImage, content, image, likeCount, isLiked, createdAt));
                             feedContainer.add(Box.createVerticalStrut(20));
                         }
                     }
@@ -3540,7 +3551,9 @@ public class GeojiTalchulApp extends JFrame {
             cal.setLayout(new BorderLayout());
             cal.getContentPane().setBackground(WHITE);
 
-            LocalDate[] cursor = {LocalDate.now()};
+            // LocalDate[] cursor = {LocalDate.now()};
+
+            LocalDate[] cursor = {LocalDate.of(2026, 8, 30)};
             String[] picked = {null};
 
             // ── 헤더 (월 네비게이션) ──
@@ -3626,7 +3639,8 @@ public class GeojiTalchulApp extends JFrame {
                     btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
                     DayOfWeek dow = ld.getDayOfWeek();
-                    if (ld.equals(LocalDate.now())) {
+                    // if (ld.equals(LocalDate.now())) {
+                    if (ld.equals(LocalDate.of(2026, 8, 30))) {
                         // 오늘
                         btn.setBackground(new Color(230, 243, 237));
                         btn.setForeground(GREEN_DARK);
@@ -3953,7 +3967,7 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         //  4. 댓글 기능 완벽하게 적출된 인스타 카드!
-        private JPanel buildInstaCard(int postId, int authorUserId, String author, ImageIcon profileImage, String text, ImageIcon image, int likes, boolean isLikedInitial) {
+        private JPanel buildInstaCard(int postId, int authorUserId, String author, ImageIcon profileImage, String text, ImageIcon image, int likes, boolean isLikedInitial, String createdAt) {
             JPanel card = new RoundedPanel(WHITE, 20); 
             card.setLayout(new BorderLayout(0, 10));
             card.setBorder(new EmptyBorder(15, 15, 15, 15));
@@ -3983,8 +3997,19 @@ public class GeojiTalchulApp extends JFrame {
 
             JLabel nameLabel = new JLabel(author);
             nameLabel.setFont(BASE_FONT.deriveFont(Font.BOLD, 16f));
+            
+            JLabel dateLabel = new JLabel(createdAt);
+            dateLabel.setFont(BASE_FONT.deriveFont(Font.PLAIN, 12f));
+            dateLabel.setForeground(MUTED);
+            
+            JPanel nameDatePanel = new JPanel();
+            nameDatePanel.setLayout(new BoxLayout(nameDatePanel, BoxLayout.Y_AXIS));
+            nameDatePanel.setOpaque(false);
+            nameDatePanel.add(nameLabel);
+            nameDatePanel.add(dateLabel);
+
             header.add(profilePic);
-            header.add(nameLabel);
+            header.add(nameDatePanel);
             headerWrapper.add(header, BorderLayout.WEST);
 
             if (currentUserId == authorUserId) {
@@ -4348,7 +4373,8 @@ public class GeojiTalchulApp extends JFrame {
 
     // ---------- Expense dialog ----------
     void openExpenseDialog(String presetLarge, String presetMedium) {
-        openExpenseDialog(presetLarge,presetMedium,LocalDate.now());
+        // openExpenseDialog(presetLarge,presetMedium,LocalDate.now());
+        openExpenseDialog(presetLarge,presetMedium,LocalDate.of(2026, 8, 30));
     }
 
     void openExpenseDialog(String presetLarge, String presetMedium, LocalDate presetDate) {
@@ -4494,27 +4520,33 @@ public class GeojiTalchulApp extends JFrame {
             expenses.add(new Expense(id,large,medium,small,item,amount,date,false));
         }
 
-        long totalSpent(){ return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.now())).mapToLong(e->e.amount).sum(); }
+        // long totalSpent(){ return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.now())).mapToLong(e->e.amount).sum(); }
+
+        long totalSpent(){ return expenses.stream().filter(e->YearMonth.from(e.date).equals(YearMonth.of(2026, 8))).mapToLong(e->e.amount).sum(); }
         double budgetUsage(){ return budget==0?0:totalSpent()/(double)budget; }
 
         Map<String,Long> largeTotals(){ return largeTotals(1); }
         Map<String,Long> largeTotals(int months){
-            LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            // LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            LocalDate startDate = LocalDate.of(2026, 8, 30).minusMonths(months - 1).withDayOfMonth(1);
             return expenses.stream().filter(e->!e.date.isBefore(startDate))
                     .collect(Collectors.groupingBy(e->e.large,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
         Map<String,Long> mediumTotals(){ return mediumTotals(1); }
         Map<String,Long> mediumTotals(int months){
-            LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            // LocalDate startDate = LocalDate.now().minusMonths(months - 1).withDayOfMonth(1);
+            LocalDate startDate = LocalDate.of(2026, 8, 30).minusMonths(months - 1).withDayOfMonth(1);
             return expenses.stream().filter(e->!e.date.isBefore(startDate))
                     .collect(Collectors.groupingBy(e->e.medium,LinkedHashMap::new,Collectors.summingLong(e->e.amount)));
         }
 
         List<Expense> fixedCandidates(){
             // 최근 3개월 범위를 동적으로 계산
-            LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
-            LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+            // LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
+            LocalDate threeMonthsAgo = LocalDate.of(2026, 8, 30).minusMonths(3).withDayOfMonth(1);
+            // LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+            LocalDate nextMonthStart = LocalDate.of(2026, 8, 30).plusMonths(1).withDayOfMonth(1);
             Map<String,List<Expense>> map=expenses.stream()
                     .filter(e->!e.date.isBefore(threeMonthsAgo) && e.date.isBefore(nextMonthStart))
                     .collect(Collectors.groupingBy(e->e.large+"|"+e.medium+"|"+e.amount,LinkedHashMap::new,Collectors.toList()));
@@ -4527,8 +4559,10 @@ public class GeojiTalchulApp extends JFrame {
         int fixedExpenseCandidateCount(){ return fixedCandidates().size(); }
 
         long fixedCandidateRepeatCount(Expense candidate){
-            LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
-            LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+            // LocalDate threeMonthsAgo = LocalDate.now().minusMonths(3).withDayOfMonth(1);
+            LocalDate threeMonthsAgo = LocalDate.of(2026, 8, 30).minusMonths(3).withDayOfMonth(1);
+            // LocalDate nextMonthStart = LocalDate.now().plusMonths(1).withDayOfMonth(1);
+            LocalDate nextMonthStart = LocalDate.of(2026, 8, 30).plusMonths(1).withDayOfMonth(1);
             return expenses.stream()
                     .filter(e -> !e.date.isBefore(threeMonthsAgo) && e.date.isBefore(nextMonthStart))
                     .filter(e -> e.medium.equals(candidate.medium) && e.amount == candidate.amount)
@@ -4965,3 +4999,5 @@ public class GeojiTalchulApp extends JFrame {
         });
     }
 }
+
+

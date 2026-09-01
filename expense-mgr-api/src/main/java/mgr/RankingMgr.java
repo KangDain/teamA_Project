@@ -21,7 +21,7 @@ public class RankingMgr {
             con = pool.getConnection();
             String sql = "SELECT u.user_id, u.user_name, u.point_balance, " +
                          "(SELECT limit_amount FROM budget WHERE user_id = u.user_id AND budget_scope = 'TOTAL' LIMIT 1) AS goal_amount, " +
-                         "(SELECT COALESCE(SUM(expense_amount), 0) FROM expense WHERE user_id = u.user_id AND YEAR(spent_date) = YEAR(CURDATE()) AND MONTH(spent_date) = MONTH(CURDATE())) AS actual_amount " +
+                         "(SELECT COALESCE(SUM(expense_amount), 0) FROM expense WHERE user_id = u.user_id AND YEAR(spent_date) = YEAR('2026-08-30') AND MONTH(spent_date) = MONTH('2026-08-30') /* Mocked date for presentation */) AS actual_amount " +
                          "FROM user u";
             pstmt = con.prepareStatement(sql);
             rs = pstmt.executeQuery();
@@ -62,3 +62,4 @@ public class RankingMgr {
         return list;
     }
 }
+
