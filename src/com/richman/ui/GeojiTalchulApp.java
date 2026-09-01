@@ -1692,8 +1692,8 @@ public class GeojiTalchulApp extends JFrame {
             //  1. 꼬리가 달린 말풍선 패널 생성
             JPanel bubblePanel = new SpeechBubblePanel(WHITE, 30);
             bubblePanel.setLayout(new BorderLayout());
-            // 말풍선 꼬리(12px) 공간을 위해 아래쪽 여백을 22로 늘림
-            bubblePanel.setBorder(new EmptyBorder(10, 15, 22, 15)); 
+            // 말풍선 꼬리(12px) 를 고려해 아래 패딩을 16으로 최적화, 윗 패딩 4
+            bubblePanel.setBorder(new EmptyBorder(10, 15, 20, 15)); 
             
             javax.swing.JTextPane bubbleText = new javax.swing.JTextPane();
             bubbleText.setOpaque(false);
@@ -1708,20 +1708,19 @@ public class GeojiTalchulApp extends JFrame {
             javax.swing.text.StyleConstants.setAlignment(center, javax.swing.text.StyleConstants.ALIGN_CENTER);
             doc.setParagraphAttributes(0, doc.getLength(), center, false);
             
-            // 텍스트가 양옆으로 너무 늘어나지 않게 좌우 패딩을 주어 강제 줄바꿈 유도
+            // 텍스트가 양옆으로 튀어나오지 않게 패딩을 15로 축소
             JPanel textWrapper = new JPanel(new BorderLayout());
             textWrapper.setOpaque(false);
-            textWrapper.setBorder(new EmptyBorder(0, 30, 0, 30));
+            textWrapper.setBorder(new EmptyBorder(0, 15, 0, 15));
             textWrapper.add(bubbleText, BorderLayout.CENTER);
             
             bubblePanel.add(textWrapper, BorderLayout.CENTER);
             bubblePanel.setVisible(false);
 
             //  [핵심 부분] 말풍선이 나타날 때 캐릭터가 안 밀리게 함!
-            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10));
+            JPanel bubbleWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 2)); 
             bubbleWrapper.setOpaque(false);
-            //  빈 공간을 확보해서 말풍선이 나타나도 세로 80px을 미리 차지하게 합니다.
-            bubbleWrapper.setPreferredSize(new Dimension(280, 80)); 
+            bubbleWrapper.setPreferredSize(new Dimension(280, 75)); 
             bubbleWrapper.add(bubblePanel);
             rightBox.add(bubbleWrapper, BorderLayout.NORTH);
 
@@ -1734,18 +1733,19 @@ public class GeojiTalchulApp extends JFrame {
 
             //  3. 거지 찰진 랜덤 대사 목록
             String[] quotes = {
-                "오늘 점심은 삼각김밥이다...",
-                "숨만 쉬어도 돈이 나가네...",
-                "이러다간 진짜 길바닥 나앉아!",
-                "내 지갑은 양파 같아... 열 때마다 눈물이 나거든.",
-                "물배 채우는 것도 하루 이틀이지, 이러다 영양실조 걸리겠어....",
-                "누가 길가다 만 원짜리 하나 안 떨어뜨리나 바닥만 보고 걷는다니까.",
-                "로또 4등이라도 당첨되면 소원이 없겠네, 진짜.",
-                "이번 달 월급은 통장에 로그인했다가 흔적도 없이 로그아웃했어!",
-                "광합성으로 배를 채울 수 있으면 얼마나 좋을까...",
-                "통장 잔고가 내 시력보다 더 떨어졌어....",
-                "내일은 동네 박스 줍는 할아버지랑 구역 경쟁이라도 해야 할 판이야...",
-                "누가 나 좀 안 주워가나? 밥만 주면 집 진짜 잘 지키는데."
+                "아 배고프다...",
+                "오늘도 굶어야 하나...",
+                "이러다가 뼈만 남겠어!",
+                "한 푼만 줍쇼... 아 여긴 안주네.",
+                "빈 채울 것들도 사러 마트나 갈까,\n이런 나란 녀석....",
+                "언젠가는 내 통장도 하나 둘\n동그라미가 더 붙겠지.",
+                "로또 4등이라도 당첨되면\n소원이 없겠네, 진짜.",
+                "이번 달은 좀 알뜰하게 살았다고\n칭찬해 주려나!",
+                "이번 달 월급은 통장에 로그인했다가\n흔적도 없이 로그아웃했어!",
+                "광합성으로 배를 채울 수 있으면\n얼마나 좋을까...",
+                "통장 잔고가 내 시력보다\n더 떨어졌어....",
+                "내 빈 주머니 소리 들어볼래?\n아주 청아할 지경이야...",
+                "숨 쉬는 것도 유료? 제발\n그것만은 안 된다고 해줘요."
             };
 
             // 말풍선 사라지는 타이머를 담을 변수
