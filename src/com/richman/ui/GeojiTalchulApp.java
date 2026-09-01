@@ -1,4 +1,4 @@
-package com.richman.ui;
+﻿package com.richman.ui;
 
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -2481,6 +2481,19 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void refresh() {
+            Object selected = largeCombo.getSelectedItem();
+            javax.swing.DefaultComboBoxModel<String> model = new javax.swing.DefaultComboBoxModel<>();
+            model.addElement("전체 지출 내역");
+            for (String cat : state.largeCategories) {
+                model.addElement(cat);
+            }
+            if (selected != null && model.getIndexOf(selected) >= 0) {
+                model.setSelectedItem(selected);
+            } else {
+                model.setSelectedItem("전체 지출 내역");
+            }
+            largeCombo.setModel(model);
+
             pie.repaint();
             trend.repaint();
             rebuildExpenseTable();
@@ -2771,14 +2784,14 @@ public class GeojiTalchulApp extends JFrame {
             head.setOpaque(false);
             JLabel title = new JLabel("이달의 절약 랭킹");
             title.setFont(FONT_TITLE);
-            JLabel sub = new JLabel("목표 지출금액 달성률 또는 누적 포인트를 기준으로 순위를 계산합니다.");
+            JLabel sub = new JLabel("지출 금액이 적은 순서를 최우선으로 하며, 누적 포인트를 보조 기준으로 순위를 계산합니다.");
             sub.setForeground(MUTED);
             JPanel htext = new JPanel();
             htext.setOpaque(false); htext.setLayout(new BoxLayout(htext,BoxLayout.Y_AXIS));
             htext.add(title); htext.add(Box.createVerticalStrut(6)); htext.add(sub);
             JButton rule = flatButton("랭킹 기준");
             rule.addActionListener(e -> JOptionPane.showMessageDialog(this,
-                    "기본 점수 = 목표 예산 대비 지출 준수율 + 활동 포인트 일부 반영\n\n실제 서버에서는 DB의 USER/BUDGET/EXPENSE/POINT_HISTORY를 사용해 집계합니다.",
+                    "기본 점수 = (100만) - (지출 금액 / 10) + 보유 포인트\n\n* 돈을 적게 쓸수록 랭킹이 높아지며, 포인트는 보조적인 역할(1포인트=10원)만 수행합니다.",
                     "랭킹 기준", JOptionPane.INFORMATION_MESSAGE));
             head.add(htext,BorderLayout.WEST); head.add(rule,BorderLayout.EAST);
             p.add(head,BorderLayout.NORTH);

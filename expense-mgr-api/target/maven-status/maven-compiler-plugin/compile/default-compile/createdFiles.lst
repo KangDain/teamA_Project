@@ -2,6 +2,7 @@ api\MgrApiServer.class
 mgr\DbInitializer.class
 api\handler\BaseMgrHandler.class
 api\handler\CategoryMgrHandler.class
+bean\RankBean.class
 bean\PostBean.class
 gui\ApiTestGui$1.class
 api\handler\FriendMgrHandler.class
@@ -14,11 +15,13 @@ mgr\DBConnectionMgr.class
 gui\ApiTestGui.class
 api\handler\UserMgrHandler.class
 mgr\StoreMgr.class
+mgr\RankingMgr.class
 bean\UserBean.class
 bean\TeamRoomBean.class
 mgr\ChallengeMgr.class
 api\handler\ChallengeMgrHandler.class
 gui\ApiClient$ApiResponse.class
+api\handler\RankingMgrHandler.class
 bean\ExpenseBean.class
 api\handler\BudgetMgrHandler.class
 bean\ItemBean.class

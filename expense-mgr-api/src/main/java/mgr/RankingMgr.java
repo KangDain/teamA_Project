@@ -35,7 +35,9 @@ public class RankingMgr {
                 if (goalAmount <= 0) goalAmount = 1000000;
 
                 double achievementRate = (double) actualAmount / goalAmount * 100.0;
-                int score = (int)((goalAmount - actualAmount) / 100) + pointBalance;
+                // 랭킹 판정: 쓴 돈이 적은 사람 우선 (기본 점수 100만에서 쓴 돈에 비례해 감점)
+                // 포인트 비중을 기존보다 낮춤 (1포인트 = 10원 가치)
+                int score = 1000000 - (actualAmount / 10) + pointBalance;
 
                 RankBean bean = new RankBean();
                 bean.setUserName(userName);
