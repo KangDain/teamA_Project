@@ -3074,11 +3074,21 @@ public class GeojiTalchulApp extends JFrame {
                                 }
                             }
                             ChallengeData cd = new ChallengeData(roomId, ownerId, name, ownerName, startDate, endDate, 300000, 1000, memberCount, isMine, isParticipating);
-                            if (loadedMembers.isEmpty()) {
-                                cd.members.add(ownerName + " (방장)");
-                            } else {
-                                cd.members.addAll(loadedMembers);
+                            
+                            boolean ownerFound = false;
+                            for (String m : loadedMembers) {
+                                if (m.equals(ownerName + " (방장)")) {
+                                    ownerFound = true;
+                                    break;
+                                }
                             }
+                            if (!ownerFound) {
+                                cd.members.add(ownerName + " (방장)");
+                                if (!loadedMembers.isEmpty()) {
+                                    cd.memberCount++; // Since owner was missing from DB count
+                                }
+                            }
+                            cd.members.addAll(loadedMembers);
                             challengeList.add(cd);
                         }
                     }
@@ -3306,30 +3316,29 @@ public class GeojiTalchulApp extends JFrame {
         }
 
         void showInviteFriendDialog(ChallengeData cd) {
-            new SwingWorker<List<String>, Void>() {
+            new SwingWorker<java.util.Map<String, Integer>, Void>() {
                 @Override
-                protected List<String> doInBackground() throws Exception {
-                    List<String> friends = new ArrayList<>();
+                protected java.util.Map<String, Integer> doInBackground() throws Exception {
+                    java.util.Map<String, Integer> nameToUserId = new java.util.LinkedHashMap<>();
                     com.google.gson.JsonElement el = httpGetElement("http://localhost:8080/api/friends?userId=" + currentUserId);
                     if (el != null && el.isJsonArray()) {
-                        homePanel.friendMap.clear();
                         for (com.google.gson.JsonElement item : el.getAsJsonArray()) {
                             com.google.gson.JsonObject obj = item.getAsJsonObject();
-                            int fId = obj.has("friendId") ? obj.get("friendId").getAsInt() : -1;
+                            int friendUserId = obj.has("friendUserId") ? obj.get("friendUserId").getAsInt() : -1;
                             String fName = obj.has("friendUserName") ? obj.get("friendUserName").getAsString() : "알수없음";
-                            if (fId >= 0) {
-                                homePanel.friendMap.put(fId, fName);
-                                friends.add(fName);
+                            if (friendUserId >= 0) {
+                                nameToUserId.put(fName, friendUserId);
                             }
                         }
                     }
-                    return friends;
+                    return nameToUserId;
                 }
                 
                 @Override
                 protected void done() {
                     try {
-                        List<String> friends = get();
+                        java.util.Map<String, Integer> nameToUserId = get();
+                        List<String> friends = new ArrayList<>(nameToUserId.keySet());
                         if (friends.isEmpty()) {
                             JOptionPane.showMessageDialog(GeojiTalchulApp.this,
                                 "등록된 친구가 없습니다.\n홈 화면의 [친구 관리]에서 먼저 친구를 추가해 주세요.",
@@ -3381,15 +3390,45 @@ public class GeojiTalchulApp extends JFrame {
                             for (int i = 0; i < boxes.size(); i++)
                                 if (boxes.get(i).isSelected()) invited.add(friends.get(i));
                             if (invited.isEmpty()) { JOptionPane.showMessageDialog(d, "초대할 친구를 선택해주세요."); return; }
-                            for (String inv : invited) {
-                                boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
-                                if (!dup) { cd.members.add(inv); cd.memberCount++; }
-                            }
-                            d.dispose();
-                            refreshChallengeCards();
-                            JOptionPane.showMessageDialog(GeojiTalchulApp.this,
-                                String.join(", ", invited) + " 님께 초대를 보냈습니다.",
-                                "초대 완료", JOptionPane.INFORMATION_MESSAGE);
+                            
+                            ok.setEnabled(false);
+                            ok.setText("처리 중...");
+                            
+                            new SwingWorker<Void, Void>() {
+                                @Override
+                                protected Void doInBackground() throws Exception {
+                                    for (String inv : invited) {
+                                        boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
+                                        if (!dup) {
+                                            int fId = nameToUserId.getOrDefault(inv, -1);
+                                            if (fId != -1) {
+                                                JsonObject body = new JsonObject();
+                                                body.addProperty("roomId", cd.roomId);
+                                                body.addProperty("userId", fId);
+                                                body.addProperty("goalAmount", cd.goalAmount);
+                                                try {
+                                                    httpPost("http://localhost:8080/api/challenges/join", body.toString());
+                                                } catch (Exception ex) {
+                                                    ex.printStackTrace();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    return null;
+                                }
+                                @Override
+                                protected void done() {
+                                    for (String inv : invited) {
+                                        boolean dup = cd.members.stream().anyMatch(m -> m.contains(inv));
+                                        if (!dup) { cd.members.add(inv); cd.memberCount++; }
+                                    }
+                                    d.dispose();
+                                    refreshChallengeCards();
+                                    JOptionPane.showMessageDialog(GeojiTalchulApp.this,
+                                        String.join(", ", invited) + " 님께 초대를 보냈습니다.",
+                                        "초대 완료", JOptionPane.INFORMATION_MESSAGE);
+                                }
+                            }.execute();
                         });
                         bottom.add(cancel); bottom.add(ok);
                         d.add(bottom, BorderLayout.SOUTH);

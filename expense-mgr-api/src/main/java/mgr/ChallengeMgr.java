@@ -54,20 +54,44 @@ public class ChallengeMgr {
     public boolean insertRoom(TeamRoomBean bean) {
         Connection con = null;
         PreparedStatement pstmt = null;
+        ResultSet rs = null;
         boolean flag = false;
         try {
             con = pool.getConnection();
+            con.setAutoCommit(false);
+            
             String sql = "INSERT INTO team_room (owner_id, room_name, start_date, end_date) VALUES (?, ?, ?, ?)";
-            pstmt = con.prepareStatement(sql);
+            pstmt = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setInt(1, bean.getOwnerId());
             pstmt.setString(2, bean.getRoomName());
             pstmt.setDate(3, bean.getStartDate());
             pstmt.setDate(4, bean.getEndDate());
-            if (pstmt.executeUpdate() == 1) flag = true;
+            
+            if (pstmt.executeUpdate() == 1) {
+                rs = pstmt.getGeneratedKeys();
+                if (rs.next()) {
+                    int roomId = rs.getInt(1);
+                    String sql2 = "INSERT INTO team_member (room_id, user_id, goal_amount) VALUES (?, ?, ?)";
+                    try (PreparedStatement pstmt2 = con.prepareStatement(sql2)) {
+                        pstmt2.setInt(1, roomId);
+                        pstmt2.setInt(2, bean.getOwnerId());
+                        pstmt2.setInt(3, 300000); // Default goal amount for owner
+                        pstmt2.executeUpdate();
+                    }
+                }
+                con.commit();
+                flag = true;
+            }
         } catch (Exception e) {
+            if (con != null) {
+                try { con.rollback(); } catch (SQLException ex) {}
+            }
             e.printStackTrace();
         } finally {
-            pool.freeConnection(con, pstmt);
+            if (con != null) {
+                try { con.setAutoCommit(true); } catch (SQLException ex) {}
+            }
+            pool.freeConnection(con, pstmt, rs);
         }
         return flag;
     }
